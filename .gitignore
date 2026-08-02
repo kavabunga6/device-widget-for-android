@@ -29,6 +29,10 @@ tools/CompanionHostSmoke/obj/
 !tools/TransferQueueSmoke/**
 tools/TransferQueueSmoke/bin/
 tools/TransferQueueSmoke/obj/
+!tools/DocsCapture/
+!tools/DocsCapture/**
+tools/DocsCapture/bin/
+tools/DocsCapture/obj/
 .tools/
 publish/
 *.nupkg

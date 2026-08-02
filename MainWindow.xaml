@@ -239,8 +239,10 @@
                                 ToolTip="Трансляция и управление через scrcpy">
                             <StackPanel HorizontalAlignment="Center">
                                 <Border Width="48" Height="48" CornerRadius="14" Background="#7559E8">
-                                    <TextBlock Text="&#xE7F4;" FontFamily="Segoe Fluent Icons" FontSize="22"
-                                               Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <Viewbox Width="22" Height="22">
+                                        <Path Data="M 3,4 L 21,4 L 21,17 L 3,17 Z M 8,21 L 16,21 M 12,17 L 12,21"
+                                              Stroke="White" StrokeThickness="1.8" Fill="Transparent" />
+                                    </Viewbox>
                                 </Border>
                                 <TextBlock Text="Экран" Margin="0,5,0,0" FontSize="10.5" TextAlignment="Center" />
                             </StackPanel>
@@ -249,8 +251,10 @@
                                 ToolTip="Записать экран в MKV через scrcpy">
                             <StackPanel HorizontalAlignment="Center">
                                 <Border Width="48" Height="48" CornerRadius="14" Background="#C34755">
-                                    <TextBlock Text="&#xE714;" FontFamily="Segoe Fluent Icons" FontSize="22"
-                                               Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <Viewbox Width="22" Height="22">
+                                        <Path Data="M 12,3 A 9,9 0 1 1 11.9,3 Z M 12,8 A 4,4 0 1 1 11.9,8 Z"
+                                              Stroke="White" StrokeThickness="1.8" Fill="Transparent" />
+                                    </Viewbox>
                                 </Border>
                                 <TextBlock Text="Запись" Margin="0,5,0,0" FontSize="10.5" TextAlignment="Center" />
                             </StackPanel>
@@ -259,8 +263,11 @@
                                 ToolTip="Файлы, фотографии и папки телефона">
                             <StackPanel HorizontalAlignment="Center">
                                 <Border Width="48" Height="48" CornerRadius="14" Background="#E59A27">
-                                    <TextBlock Text="&#xE8B7;" FontFamily="Segoe Fluent Icons" FontSize="22"
-                                               Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <Viewbox Width="23" Height="21">
+                                        <Path Data="M 2,7 L 9,7 L 11,4 L 22,4 L 22,19 L 2,19 Z"
+                                              Stroke="White" StrokeThickness="1.8" Fill="Transparent"
+                                              StrokeLineJoin="Round" />
+                                    </Viewbox>
                                 </Border>
                                 <TextBlock Text="Файлы" Margin="0,5,0,0" FontSize="10.5" TextAlignment="Center" />
                             </StackPanel>
@@ -269,8 +276,11 @@
                                 ToolTip="Очередь передач, прогресс и отмена">
                             <StackPanel HorizontalAlignment="Center">
                                 <Border Width="48" Height="48" CornerRadius="14" Background="#287D8E">
-                                    <TextBlock Text="&#xE896;" FontFamily="Segoe Fluent Icons" FontSize="22"
-                                               Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <Viewbox Width="22" Height="22">
+                                        <Path Data="M 7,3 L 3,7 L 7,11 M 3,7 L 16,7 M 17,21 L 21,17 L 17,13 M 21,17 L 8,17"
+                                              Stroke="White" StrokeThickness="1.9" Fill="Transparent"
+                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                                    </Viewbox>
                                 </Border>
                                 <TextBlock Text="Передачи" Margin="0,5,0,0" FontSize="10.5" TextAlignment="Center" />
                             </StackPanel>
@@ -279,8 +289,10 @@
                                 ToolTip="Сделать и сохранить PNG-скриншот">
                             <StackPanel HorizontalAlignment="Center">
                                 <Border Width="48" Height="48" CornerRadius="14" Background="#DD4F78">
-                                    <TextBlock Text="&#xE722;" FontFamily="Segoe Fluent Icons" FontSize="22"
-                                               Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <Viewbox Width="23" Height="21">
+                                        <Path Data="M 3,7 L 7,7 L 9,4 L 15,4 L 17,7 L 21,7 L 21,19 L 3,19 Z M 12,9 A 4,4 0 1 1 11.9,9 Z"
+                                              Stroke="White" StrokeThickness="1.7" Fill="Transparent" StrokeLineJoin="Round" />
+                                    </Viewbox>
                                 </Border>
                                 <TextBlock Text="Скриншот" Margin="0,5,0,0" FontSize="10.5" TextAlignment="Center" />
                             </StackPanel>
@@ -289,8 +301,11 @@
                                 ToolTip="Выбрать и установить APK">
                             <StackPanel HorizontalAlignment="Center">
                                 <Border Width="48" Height="48" CornerRadius="14" Background="#30A66B">
-                                    <TextBlock Text="&#xE7B8;" FontFamily="Segoe Fluent Icons" FontSize="22"
-                                               Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <Viewbox Width="22" Height="22">
+                                        <Path Data="M 5,3 L 19,3 L 19,21 L 5,21 Z M 9,7 L 15,7 M 12,7 L 12,15 M 9,12 L 12,15 L 15,12"
+                                              Stroke="White" StrokeThickness="1.7" Fill="Transparent"
+                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                                    </Viewbox>
                                 </Border>
                                 <TextBlock Text="APK" Margin="0,5,0,0" FontSize="10.5" TextAlignment="Center" />
                             </StackPanel>
@@ -299,8 +314,11 @@
                                 ToolTip="Открыть ADB shell">
                             <StackPanel HorizontalAlignment="Center">
                                 <Border Width="48" Height="48" CornerRadius="14" Background="#394252">
-                                    <TextBlock Text="&#xE756;" FontFamily="Segoe Fluent Icons" FontSize="22"
-                                               Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <Viewbox Width="23" Height="20">
+                                        <Path Data="M 2,3 L 22,3 L 22,19 L 2,19 Z M 6,8 L 10,11 L 6,14 M 12,15 L 18,15"
+                                              Stroke="White" StrokeThickness="1.7" Fill="Transparent"
+                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                                    </Viewbox>
                                 </Border>
                                 <TextBlock Text="Shell" Margin="0,5,0,0" FontSize="10.5" TextAlignment="Center" />
                             </StackPanel>
@@ -309,8 +327,10 @@
                                 ToolTip="Отправить текст из буфера обмена">
                             <StackPanel HorizontalAlignment="Center">
                                 <Border Width="48" Height="48" CornerRadius="14" Background="#148E9E">
-                                    <TextBlock Text="&#xE77F;" FontFamily="Segoe Fluent Icons" FontSize="22"
-                                               Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <Viewbox Width="21" Height="23">
+                                        <Path Data="M 6,5 L 18,5 L 18,21 L 4,21 L 4,5 Z M 8,5 L 8,2 L 14,2 L 14,5 M 8,10 L 14,10 M 8,14 L 14,14"
+                                              Stroke="White" StrokeThickness="1.7" Fill="Transparent" StrokeLineJoin="Round" />
+                                    </Viewbox>
                                 </Border>
                                 <TextBlock Text="Буфер" Margin="0,5,0,0" FontSize="10.5" TextAlignment="Center" />
                             </StackPanel>
@@ -319,8 +339,11 @@
                                 ToolTip="Включить или выключить экран телефона">
                             <StackPanel HorizontalAlignment="Center">
                                 <Border Width="48" Height="48" CornerRadius="14" Background="#D54B43">
-                                    <TextBlock Text="&#xE7E8;" FontFamily="Segoe Fluent Icons" FontSize="22"
-                                               Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <Viewbox Width="22" Height="22">
+                                        <Path Data="M 12,2 L 12,11 M 6.2,5.4 A 8,8 0 1 0 17.8,5.4"
+                                              Stroke="White" StrokeThickness="2" Fill="Transparent"
+                                              StrokeStartLineCap="Round" />
+                                    </Viewbox>
                                 </Border>
                                 <TextBlock Text="Питание" Margin="0,5,0,0" FontSize="10.5" TextAlignment="Center" />
                             </StackPanel>
@@ -329,8 +352,11 @@
                                 ToolTip="Открыть устройство через MTP в Проводнике">
                             <StackPanel HorizontalAlignment="Center">
                                 <Border Width="48" Height="48" CornerRadius="14" Background="#5070A8">
-                                    <TextBlock Text="&#xE7F1;" FontFamily="Segoe Fluent Icons" FontSize="22"
-                                               Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <Viewbox Width="22" Height="23">
+                                        <Path Data="M 12,3 L 12,18 M 12,7 L 7,11 L 7,15 M 12,10 L 17,14 L 17,17 M 9,3 L 12,0 L 15,3 M 5,15 L 9,15 L 9,19 L 5,19 Z M 15,17 A 2,2 0 1 1 14.9,17 Z M 12,18 L 9,22 L 15,22 Z"
+                                              Stroke="White" StrokeThickness="1.5" Fill="Transparent"
+                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                                    </Viewbox>
                                 </Border>
                                 <TextBlock Text="MTP" Margin="0,5,0,0" FontSize="10.5" TextAlignment="Center" />
                             </StackPanel>
@@ -339,8 +365,11 @@
                                 ToolTip="Сопряжение и подключение Wireless debugging">
                             <StackPanel HorizontalAlignment="Center">
                                 <Border Width="48" Height="48" CornerRadius="14" Background="#326BB5">
-                                    <TextBlock Text="&#xE701;" FontFamily="Segoe Fluent Icons" FontSize="22"
-                                               Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <Viewbox Width="23" Height="20">
+                                        <Path Data="M 2,7 C 8,-1 16,-1 22,7 M 6,11 C 10,6 14,6 18,11 M 10,15 C 11.5,13.5 12.5,13.5 14,15 M 12,19 L 12,19.1"
+                                              Stroke="White" StrokeThickness="1.9" Fill="Transparent"
+                                              StrokeStartLineCap="Round" />
+                                    </Viewbox>
                                 </Border>
                                 <TextBlock Text="Wi-Fi ADB" Margin="0,5,0,0" FontSize="10.5" TextAlignment="Center" />
                             </StackPanel>
@@ -349,8 +378,11 @@
                                 Click="CompanionButton_Click" ToolTip="Установить Device Widget Companion">
                             <StackPanel HorizontalAlignment="Center">
                                 <Border Width="48" Height="48" CornerRadius="14" Background="#6157A8">
-                                    <TextBlock Text="&#xE8EA;" FontFamily="Segoe Fluent Icons" FontSize="22"
-                                               Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <Viewbox Width="22" Height="23">
+                                        <Path Data="M 7,2 L 17,2 L 17,21 L 7,21 Z M 10,5 L 14,5 M 11,18 L 13,18 M 3,9 C 1,11 1,14 3,16 M 21,9 C 23,11 23,14 21,16"
+                                              Stroke="White" StrokeThickness="1.7" Fill="Transparent"
+                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                                    </Viewbox>
                                 </Border>
                                 <TextBlock x:Name="CompanionButtonText" Text="Компаньон" Margin="0,5,0,0"
                                            FontSize="10.5" TextAlignment="Center" />

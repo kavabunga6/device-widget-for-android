@@ -1,6 +1,7 @@
 <Window x:Class="AndroidWidget.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:chrome="clr-namespace:AndroidWidget.Presentation.Chrome"
         Title="Настройки Device Widget" Width="440" Height="650"
         Icon="{StaticResource AppIconImage}"
         ResizeMode="NoResize" WindowStartupLocation="CenterScreen"
@@ -68,35 +69,20 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="43" />
                 <RowDefinition Height="*" />
+                <RowDefinition Height="60" />
             </Grid.RowDefinitions>
 
-            <Grid Margin="15,0,10,0" Background="Transparent"
-                  MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <Border Width="15" Height="22" CornerRadius="4" Margin="1,0,9,0"
-                        BorderBrush="{DynamicResource Accent}" BorderThickness="1.5"
-                        VerticalAlignment="Center">
-                    <Border Width="7" Height="11" CornerRadius="2" Background="{DynamicResource Accent}" />
-                </Border>
-                <TextBlock Grid.Column="1" Text="Настройки Device Widget" FontSize="11"
-                           Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
-                <Button Grid.Column="2" Content="×" Width="30" Height="30" Padding="0" Margin="0"
-                        FontSize="17" Style="{StaticResource ActionButton}"
-                        HorizontalContentAlignment="Center" Click="CloseButton_Click" />
-            </Grid>
+            <chrome:DialogTitleBar Title="Настройки" Subtitle="Device Widget" />
 
-            <Grid Grid.Row="1" Margin="27,17,27,23">
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled" PanningMode="VerticalOnly">
+            <Grid Margin="27,17,19,10">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
@@ -254,9 +240,14 @@
                                Foreground="{DynamicResource TextSecondary}" FontSize="10.5" TextWrapping="Wrap" />
                 </StackPanel>
 
-                <Button Grid.Row="6" Content="Готово" Width="104" Height="38" HorizontalAlignment="Right"
-                        Style="{StaticResource ActionButton}" Margin="0" Click="CloseButton_Click" />
             </Grid>
+            </ScrollViewer>
+
+            <Button Grid.Row="2" Content="Готово" Width="104" Height="38"
+                    HorizontalAlignment="Right" VerticalAlignment="Top"
+                    Style="{StaticResource ActionButton}" Margin="0,6,27,0" Padding="0"
+                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                    Click="CloseButton_Click" />
         </Grid>
     </Border>
 </Window>

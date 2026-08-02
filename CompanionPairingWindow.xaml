@@ -1,12 +1,20 @@
 <Window x:Class="AndroidWidget.CompanionPairingWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:chrome="clr-namespace:AndroidWidget.Presentation.Chrome"
         Title="Сопряжение Device Widget Companion"
         Icon="{StaticResource AppIconImage}"
-        Width="570" Height="390" MinWidth="500" MinHeight="350"
+        Width="570" Height="450" MinWidth="500" MinHeight="390"
         WindowStartupLocation="CenterOwner" ResizeMode="CanResizeWithGrip"
-        Background="{DynamicResource WindowSurface}">
-    <Grid Margin="24">
+        Style="{StaticResource DialogWindowStyle}">
+    <Window.Resources>
+        <Style TargetType="Button" BasedOn="{StaticResource DialogButton}" />
+        <Style TargetType="TextBox" BasedOn="{StaticResource DialogTextBox}" />
+    </Window.Resources>
+    <Grid>
+        <Grid.RowDefinitions><RowDefinition Height="44" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+        <chrome:DialogTitleBar Title="Сопряжение с телефоном" Subtitle="Device Widget Companion" />
+        <Grid Grid.Row="1" Margin="24,12,24,24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -22,9 +30,7 @@
                        Foreground="{DynamicResource TextSecondary}" />
         </StackPanel>
 
-        <Border Grid.Row="1" Margin="0,20,0,0" Padding="16" CornerRadius="14"
-                Background="{DynamicResource SurfaceBrush}"
-                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+        <Border Grid.Row="1" Margin="0,20,0,0" Padding="16" Style="{StaticResource DialogCard}">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="110" />
@@ -61,5 +67,6 @@
                     Click="OpenOnPhoneButton_Click" />
             <Button Content="Готово" Padding="18,8" IsDefault="True" Click="CloseButton_Click" />
         </StackPanel>
+        </Grid>
     </Grid>
 </Window>

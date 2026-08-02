@@ -1,6 +1,5 @@
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using System.Windows.Media;
 using AndroidWidget.Presentation.Media;
 using AndroidWidget.Presentation.Screenshots;
@@ -157,9 +156,4 @@ public partial class SettingsWindow : Window
         }
     }
 
-    private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        if (e.LeftButton == MouseButtonState.Pressed && e.OriginalSource is not Button)
-            DragMove();
-    }
 }

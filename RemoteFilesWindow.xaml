@@ -1,12 +1,13 @@
 <Window x:Class="AndroidWidget.RemoteFilesWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:chrome="clr-namespace:AndroidWidget.Presentation.Chrome"
         Title="Файлы Android" Width="700" Height="530" MinWidth="560" MinHeight="390"
         Icon="{StaticResource AppIconImage}"
-        WindowStartupLocation="CenterOwner" Background="{DynamicResource WindowSurface}"
-        Foreground="{DynamicResource TextPrimary}" Loaded="Window_Loaded">
+        WindowStartupLocation="CenterOwner" Style="{StaticResource DialogWindowStyle}"
+        Loaded="Window_Loaded">
     <Window.Resources>
-        <Style TargetType="Button" BasedOn="{StaticResource ActionButton}">
+        <Style TargetType="Button" BasedOn="{StaticResource DialogButton}">
             <Setter Property="Margin" Value="0,0,8,0" />
             <Setter Property="Padding" Value="12,8" />
             <Setter Property="HorizontalContentAlignment" Value="Center" />
@@ -37,7 +38,10 @@
         </Style>
     </Window.Resources>
 
-    <Grid Margin="20">
+    <Grid>
+        <Grid.RowDefinitions><RowDefinition Height="44" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+        <chrome:DialogTitleBar Title="Файлы и фотографии" Subtitle="Device Widget" />
+        <Grid Grid.Row="1" Margin="20,12,20,20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -117,6 +121,7 @@
                 <Button x:Name="DownloadButton" Content="Скачать на ПК" IsEnabled="False" Margin="0"
                         Click="DownloadButton_Click" />
             </StackPanel>
+        </Grid>
         </Grid>
     </Grid>
 </Window>
