@@ -20,8 +20,6 @@ public partial class MainWindow : Window
     private const double CompactWidth = 258;
     private const double CompactHeight = 392;
     private const double CompactMinWidth = 230;
-    private const double ExpandedPanelSpace = 330;
-    private const double ExpandedMinWidth = CompactMinWidth + ExpandedPanelSpace;
     private readonly IAndroidDeviceService _devicesService;
     private readonly ISettingsService _settings;
     private readonly IDesktopIntegration _desktop;
@@ -72,7 +70,10 @@ public partial class MainWindow : Window
         IsVisibleChanged += (_, _) =>
         {
             if (!IsVisible)
+            {
+                ToggleActionPanel(false);
                 ClearSmsBubbles();
+            }
             else
                 RefreshSmsBubbleVisibility();
         };
@@ -374,21 +375,8 @@ public partial class MainWindow : Window
         var nextOpen = open ?? !_menuOpen;
         if (nextOpen == _menuOpen)
             return;
-
-        if (nextOpen)
-        {
-            MinWidth = ExpandedMinWidth;
-            Width = Math.Min(Math.Max(ExpandedMinWidth, Width + ExpandedPanelSpace), MaxWidth);
-        }
-        else
-        {
-            MinWidth = CompactMinWidth;
-            Width = Math.Max(CompactMinWidth, Width - ExpandedPanelSpace);
-        }
-
         _menuOpen = nextOpen;
-        ActionPanel.Visibility = _menuOpen ? Visibility.Visible : Visibility.Collapsed;
-        KeepWindowOnScreen();
+        ActionPopup.IsOpen = _menuOpen;
     }
 
     private void CollapsePanel_Click(object sender, RoutedEventArgs e) => ToggleActionPanel(false);
@@ -773,15 +761,6 @@ public partial class MainWindow : Window
         PanelStatusText.Foreground = brush;
     }
 
-    private void KeepWindowOnScreen()
-    {
-        var workArea = SystemParameters.WorkArea;
-        if (Left + Width > workArea.Right)
-            Left = Math.Max(workArea.Left, workArea.Right - Width);
-        if (Top + Height > workArea.Bottom)
-            Top = Math.Max(workArea.Top, workArea.Bottom - Height);
-    }
-
     private void RestoreSettings()
     {
         var settings = _settings.Current;
@@ -805,8 +784,7 @@ public partial class MainWindow : Window
             Left = Left,
             Top = Top,
             Topmost = Topmost,
-            MainCardWidth = Math.Clamp(_menuOpen ? Width - ExpandedPanelSpace : Width,
-                CompactMinWidth, MaxWidth),
+            MainCardWidth = Math.Clamp(Width, CompactMinWidth, MaxWidth),
             MainCardHeight = Math.Clamp(Height, MinHeight, MaxHeight)
         });
     }

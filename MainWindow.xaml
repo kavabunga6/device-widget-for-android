@@ -11,7 +11,6 @@
     <Grid Margin="8">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
 
         <!-- Телефон -->
@@ -198,14 +197,17 @@
             </Grid>
         </Border>
 
-        <!-- Раскрываемая панель действий -->
-        <Border x:Name="ActionPanel" Grid.Column="1" Visibility="Collapsed" Width="310" Margin="12,8,8,8"
-                CornerRadius="22" Background="{DynamicResource WindowSurface}"
-                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+        <!-- Независимое меню: не участвует в размере телефонной карточки. -->
+        <Popup x:Name="ActionPopup" PlacementTarget="{Binding ElementName=PhoneShell}"
+               Placement="Right" HorizontalOffset="10" AllowsTransparency="True"
+               PopupAnimation="Fade" StaysOpen="True">
+            <Border x:Name="ActionPanel" Width="310" Height="500" Margin="8"
+                    CornerRadius="22" Background="{DynamicResource WindowSurface}"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
             <Grid Margin="17">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
@@ -231,9 +233,8 @@
                     </Button>
                 </Grid>
 
-                <ScrollViewer Grid.Row="1" Margin="0,10,0,0" VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled">
-                    <UniformGrid Columns="4" HorizontalAlignment="Center">
+                <UniformGrid Grid.Row="1" Columns="4" Rows="4" Margin="0,10,0,0"
+                             HorizontalAlignment="Center">
                         <Button Style="{StaticResource AppTileButton}" Click="ScreenButton_Click"
                                 ToolTip="Трансляция и управление через scrcpy">
                             <StackPanel HorizontalAlignment="Center">
@@ -355,8 +356,7 @@
                                            FontSize="10.5" TextAlignment="Center" />
                             </StackPanel>
                         </Button>
-                    </UniformGrid>
-                </ScrollViewer>
+                </UniformGrid>
 
                 <StackPanel Grid.Row="2" Margin="2,8,2,0">
                     <TextBlock x:Name="PanelStatusText" Text="Готово" FontSize="10"
@@ -366,7 +366,8 @@
                                TextTrimming="CharacterEllipsis" />
                 </StackPanel>
             </Grid>
-        </Border>
+            </Border>
+        </Popup>
 
         <Popup x:Name="SmsBubblePopup" PlacementTarget="{Binding ElementName=PhoneShell}"
                Placement="Left" HorizontalOffset="-7" AllowsTransparency="True"
