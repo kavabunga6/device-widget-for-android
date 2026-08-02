@@ -5,7 +5,9 @@ using AndroidWidget.Infrastructure.Diagnostics;
 using AndroidWidget.Infrastructure.Scrcpy;
 using AndroidWidget.Infrastructure.Settings;
 using AndroidWidget.Infrastructure.Windows;
+using AndroidWidget.Presentation.Media;
 using AndroidWidget.Presentation.Screenshots;
+using AndroidWidget.Presentation.Transfers;
 using AndroidWidget.Services;
 
 namespace AndroidWidget.Composition;
@@ -14,7 +16,8 @@ public sealed class AppServices
 {
     private AppServices(IAndroidDeviceService devices, ISettingsService settings,
         IDesktopIntegration desktop, IAppLogger logger, IDiagnosticsVerifier diagnostics,
-        ScreenshotStorage screenshots, ICompanionService companion, CompanionCoordinator companionCoordinator)
+        ScreenshotStorage screenshots, RecordingStorage recordings, PhotoImportService photoImport,
+        TransferQueueService transfers, ICompanionService companion, CompanionCoordinator companionCoordinator)
     {
         Devices = devices;
         Settings = settings;
@@ -22,6 +25,9 @@ public sealed class AppServices
         Logger = logger;
         Diagnostics = diagnostics;
         Screenshots = screenshots;
+        Recordings = recordings;
+        PhotoImport = photoImport;
+        Transfers = transfers;
         Companion = companion;
         CompanionCoordinator = companionCoordinator;
     }
@@ -32,6 +38,9 @@ public sealed class AppServices
     public IAppLogger Logger { get; }
     public IDiagnosticsVerifier Diagnostics { get; }
     public ScreenshotStorage Screenshots { get; }
+    public RecordingStorage Recordings { get; }
+    public PhotoImportService PhotoImport { get; }
+    public TransferQueueService Transfers { get; }
     public ICompanionService Companion { get; }
     public CompanionCoordinator CompanionCoordinator { get; }
 
@@ -52,8 +61,10 @@ public sealed class AppServices
             "AndroidWidget", "companion-v1");
         var host = new CompanionHostService(new CompanionHostOptions(companionDataDirectory));
         var companionCoordinator = new CompanionCoordinator(host, companion, logger);
+        var transfers = new TransferQueueService(devices);
         return new AppServices(devices, settings, new WindowsDesktopIntegration(),
-            logger, new DiagnosticsVerifier(bundle), new ScreenshotStorage(settings), companion,
+            logger, new DiagnosticsVerifier(bundle), new ScreenshotStorage(settings), new RecordingStorage(settings),
+            new PhotoImportService(devices, settings), transfers, companion,
             companionCoordinator);
     }
 }

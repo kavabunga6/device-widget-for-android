@@ -60,6 +60,18 @@ public partial class App : System.Windows.Application
             return;
         }
 
+        if (e.Args.Contains("--verify-wireless-qr", StringComparer.OrdinalIgnoreCase))
+        {
+            var qrValid = WirelessPairingWindow.VerifyQrRenderer(out var details);
+            var parserValid = _services.Diagnostics.VerifyWirelessPairingParser();
+            var valid = qrValid && parserValid;
+            _services.Logger.Write(valid
+                ? $"Wireless QR and mDNS parser verified: {details}"
+                : $"Wireless QR verification failed: renderer={qrValid}, parser={parserValid}, {details}");
+            Environment.Exit(valid ? 0 : 1);
+            return;
+        }
+
         _singleInstanceMutex = new Mutex(true, "AndroidWidget.SingleInstance", out var isFirstInstance);
         if (!isFirstInstance)
         {
@@ -79,7 +91,8 @@ public partial class App : System.Windows.Application
             () => Dispatcher.Invoke(ExitApplication));
 
         _mainWindow = new MainWindow(_services.Devices, _services.Settings, _services.Desktop,
-            _services.Logger, _services.Screenshots, _services.Companion, _services.CompanionCoordinator)
+            _services.Logger, _services.Screenshots, _services.Recordings, _services.Transfers,
+            _services.PhotoImport, _services.Companion, _services.CompanionCoordinator)
         { Opacity = 0 };
         _mainWindow.DevicesUpdated += HandleDevicesUpdated;
         _mainWindow.Show(); // Loads the background monitor.
@@ -135,7 +148,8 @@ public partial class App : System.Windows.Application
             return;
         }
 
-        _settingsWindow = new SettingsWindow(_services.Settings, _services.Screenshots);
+        _settingsWindow = new SettingsWindow(_services.Settings, _services.Screenshots, _services.Recordings,
+            _services.PhotoImport);
         _settingsWindow.Closed += (_, _) => _settingsWindow = null;
         _settingsWindow.Show();
         _settingsWindow.Activate();
@@ -238,7 +252,8 @@ public partial class App : System.Windows.Application
             }
 
             var mini = new DeviceMiniWindow(device, _services.Devices, _services.Settings, _services.Desktop,
-                _services.Screenshots, _services.Companion, _services.CompanionCoordinator);
+                _services.Screenshots, _services.Recordings, _services.Transfers, _services.PhotoImport,
+                _services.Companion, _services.CompanionCoordinator);
             mini.PlaceAt(index);
             _miniWindows.Add(device.Serial, mini);
             mini.Show();
@@ -281,6 +296,7 @@ public partial class App : System.Windows.Application
         }
         try
         {
+            _services.Transfers.Dispose();
             _services.CompanionCoordinator.DisposeAsync().AsTask().GetAwaiter().GetResult();
         }
         catch (Exception ex)

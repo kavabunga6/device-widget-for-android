@@ -12,7 +12,7 @@
   </Window.Resources>
 
   <ScrollViewer>
-    <Grid Margin="28" RowDefinitions="Auto,Auto,Auto,*">
+    <Grid Margin="28" RowDefinitions="Auto,Auto,Auto,Auto,*">
       <Grid ColumnDefinitions="*,Auto">
         <StackPanel>
           <TextBlock Text="Android Widget" FontSize="27" FontWeight="SemiBold" Foreground="{StaticResource Primary}" />
@@ -25,6 +25,39 @@
       </Grid>
 
       <Border Grid.Row="1" Margin="0,22,0,0" Padding="18" CornerRadius="18"
+              Background="{StaticResource Surface}" BorderBrush="{StaticResource Border}" BorderThickness="1">
+        <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
+          <StackPanel>
+            <TextBlock Text="Устройства ADB" FontSize="17" FontWeight="SemiBold"
+                       Foreground="{StaticResource Primary}" />
+            <TextBlock Text="Общий UI использует adb и scrcpy из PATH на Windows, macOS и Linux"
+                       Margin="0,4,0,0" Foreground="{StaticResource Secondary}" />
+          </StackPanel>
+          <Button Grid.Column="1" Content="Обновить" Padding="16,8" Click="RefreshAdbButton_Click" />
+
+          <Grid Grid.Row="1" Grid.ColumnSpan="2" Margin="0,14,0,0" ColumnDefinitions="*,Auto,Auto,Auto,Auto">
+            <ComboBox x:Name="AdbDeviceCombo" PlaceholderText="Подключите устройство по ADB"
+                      DisplayMemberBinding="{Binding Label}" />
+            <Button Grid.Column="1" Content="Экран" Margin="8,0,0,0" Click="AdbScreenButton_Click" />
+            <Button Grid.Column="2" Content="Запись" Margin="8,0,0,0" Click="AdbRecordButton_Click" />
+            <Button Grid.Column="3" Content="Скриншот" Margin="8,0,0,0" Click="AdbScreenshotButton_Click" />
+            <Button Grid.Column="4" Content="Отправить файл" Margin="8,0,0,0" Click="AdbPushButton_Click" />
+          </Grid>
+
+          <Grid Grid.Row="2" Grid.ColumnSpan="2" Margin="0,12,0,0"
+                ColumnDefinitions="*,110,Auto,*,Auto">
+            <TextBox x:Name="WirelessEndpointText" PlaceholderText="host:port для pairing/connect" />
+            <TextBox x:Name="WirelessCodeText" Grid.Column="1" Margin="8,0,0,0" PlaceholderText="6 цифр" MaxLength="6" />
+            <Button Grid.Column="2" Content="Сопрячь" Margin="8,0,0,0" Click="WirelessPairButton_Click" />
+            <TextBlock x:Name="AdbStatusText" Grid.Column="3" Margin="14,0,0,0"
+                       Foreground="{StaticResource Secondary}" VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis" />
+            <Button Grid.Column="4" Content="Подключить" Margin="8,0,0,0" Click="WirelessConnectButton_Click" />
+          </Grid>
+        </Grid>
+      </Border>
+
+      <Border Grid.Row="2" Margin="0,22,0,0" Padding="18" CornerRadius="18"
               Background="{StaticResource Surface}" BorderBrush="{StaticResource Border}" BorderThickness="1">
         <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
           <StackPanel>
@@ -52,13 +85,13 @@
         </Grid>
       </Border>
 
-      <Grid Grid.Row="2" Margin="0,22,0,0" ColumnDefinitions="*,*">
+      <Grid Grid.Row="3" Margin="0,22,0,0" ColumnDefinitions="*,*">
         <TextBlock Text="Устройства" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource Primary}" />
         <TextBlock Grid.Column="1" Text="Последние уведомления" FontSize="18" FontWeight="SemiBold"
                    Foreground="{StaticResource Primary}" Margin="14,0,0,0" />
       </Grid>
 
-      <Grid Grid.Row="3" Margin="0,10,0,0" ColumnDefinitions="*,*">
+      <Grid Grid.Row="4" Margin="0,10,0,0" ColumnDefinitions="*,*">
         <Border Padding="10" CornerRadius="16" Background="{StaticResource Surface}"
                 BorderBrush="{StaticResource Border}" BorderThickness="1">
           <Grid>

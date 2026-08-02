@@ -84,6 +84,21 @@ public sealed class WindowsDesktopIntegration : IDesktopIntegration
 
     public OperationResult OpenFile(string path) => OpenUri(path);
 
+    public OperationResult OpenFolder(string path)
+    {
+        try
+        {
+            var fullPath = Path.GetFullPath(path);
+            Directory.CreateDirectory(fullPath);
+            Process.Start(new ProcessStartInfo(fullPath) { UseShellExecute = true });
+            return OperationResult.Success();
+        }
+        catch (Exception ex)
+        {
+            return OperationResult.Failure(ex.Message);
+        }
+    }
+
     public OperationResult RevealFile(string path)
     {
         try

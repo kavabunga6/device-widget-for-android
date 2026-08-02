@@ -21,4 +21,6 @@ public sealed class DiagnosticsVerifier : IDiagnosticsVerifier
     public bool VerifyCompanionBundle(out string details) => new CompanionPackageProvider().Verify(out details);
 
     public bool VerifySmsParser() => SmsNotificationReader.VerifyParser();
+
+    public bool VerifyWirelessPairingParser() => AndroidDeviceService.VerifyWirelessPairingParser();
 }

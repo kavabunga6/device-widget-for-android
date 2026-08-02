@@ -76,7 +76,9 @@
         <Border Grid.Row="2" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="13">
             <Grid>
                 <ListBox x:Name="FilesList" Background="Transparent" BorderThickness="0" Margin="7"
-                         MouseDoubleClick="FilesList_MouseDoubleClick" SelectionChanged="FilesList_SelectionChanged">
+                         MouseDoubleClick="FilesList_MouseDoubleClick" SelectionChanged="FilesList_SelectionChanged"
+                         PreviewMouseLeftButtonDown="FilesList_PreviewMouseLeftButtonDown"
+                         PreviewMouseMove="FilesList_PreviewMouseMove">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <Grid>

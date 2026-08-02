@@ -5,8 +5,10 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using AndroidWidget.Models;
+using AndroidWidget.Presentation.Media;
 using AndroidWidget.Presentation.Notifications;
 using AndroidWidget.Presentation.Screenshots;
+using AndroidWidget.Presentation.Transfers;
 using AndroidWidget.Services;
 using Microsoft.Win32;
 
@@ -25,6 +27,9 @@ public partial class MainWindow : Window
     private readonly IDesktopIntegration _desktop;
     private readonly IAppLogger _logger;
     private readonly ScreenshotStorage _screenshots;
+    private readonly RecordingStorage _recordings;
+    private readonly TransferQueueService _transfers;
+    private readonly PhotoImportService _photoImport;
     private readonly ICompanionService _companion;
     private readonly CompanionCoordinator _companionCoordinator;
     private readonly DispatcherTimer _refreshTimer;
@@ -39,6 +44,7 @@ public partial class MainWindow : Window
 
     public MainWindow(IAndroidDeviceService devicesService, ISettingsService settings,
         IDesktopIntegration desktop, IAppLogger logger, ScreenshotStorage screenshots,
+        RecordingStorage recordings, TransferQueueService transfers, PhotoImportService photoImport,
         ICompanionService companion, CompanionCoordinator companionCoordinator)
     {
         _devicesService = devicesService;
@@ -46,6 +52,9 @@ public partial class MainWindow : Window
         _desktop = desktop;
         _logger = logger;
         _screenshots = screenshots;
+        _recordings = recordings;
+        _transfers = transfers;
+        _photoImport = photoImport;
         _companion = companion;
         _companionCoordinator = companionCoordinator;
         _companionCoordinator.LinkChanged += CompanionLinkChanged;
@@ -58,6 +67,8 @@ public partial class MainWindow : Window
         SmsBubbleItems.ItemsSource = _smsBubbles.Items;
         _smsBubbles.Changed += SmsBubblesChanged;
         _settings.Changed += SettingsChanged;
+        _transfers.Changed += TransfersChanged;
+        _photoImport.PhotoDetected += PhotoDetected;
         IsVisibleChanged += (_, _) =>
         {
             if (!IsVisible)
@@ -90,6 +101,8 @@ public partial class MainWindow : Window
         _smsBubbles.Changed -= SmsBubblesChanged;
         _smsBubbles.Dispose();
         _settings.Changed -= SettingsChanged;
+        _transfers.Changed -= TransfersChanged;
+        _photoImport.PhotoDetected -= PhotoDetected;
         _lifetime.Cancel();
         _companionCoordinator.LinkChanged -= CompanionLinkChanged;
         _companionCoordinator.MessageReceived -= CompanionMessageReceived;
@@ -126,6 +139,7 @@ public partial class MainWindow : Window
                   ?? devices.FirstOrDefault();
             SetActiveDevice(selected);
             DevicesUpdated?.Invoke(this, devices);
+            _ = _photoImport.ScanAsync(devices, _lifetime.Token);
         }
         catch (OperationCanceledException) { }
         catch (Exception ex)
@@ -303,7 +317,7 @@ public partial class MainWindow : Window
 
     private void Phone_DragLeave(object sender, DragEventArgs e) => DropOverlay.Visibility = Visibility.Collapsed;
 
-    private async void Phone_Drop(object sender, DragEventArgs e)
+    private void Phone_Drop(object sender, DragEventArgs e)
     {
         DropOverlay.Visibility = Visibility.Collapsed;
         var device = RequireOnlineDevice();
@@ -315,26 +329,11 @@ public partial class MainWindow : Window
         if (paths.Length == 0)
             return;
 
-        await RunOperationAsync(async token =>
-        {
-            for (var index = 0; index < paths.Length; index++)
-            {
-                var path = paths[index];
-                var name = Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar));
-                var isApk = File.Exists(path) && Path.GetExtension(path).Equals(".apk", StringComparison.OrdinalIgnoreCase);
-                SetOperationStatus(isApk
-                    ? $"Устанавливаю {name} ({index + 1}/{paths.Length})…"
-                    : $"Копирую {name} ({index + 1}/{paths.Length})…");
-
-                var result = isApk
-                    ? await _devicesService.InstallApkAsync(device.Serial, path, token)
-                    : await _devicesService.PushFileAsync(device.Serial, path, token);
-                if (!result.IsSuccess)
-                    throw new InvalidOperationException($"{name}: {result.BestMessage}");
-            }
-
-            SetOperationStatus(paths.Length == 1 ? "Готово ✓" : $"Готово: {paths.Length} объектов ✓");
-        });
+        foreach (var path in paths)
+            _transfers.EnqueueUpload(device.Serial, path);
+        SetOperationStatus(paths.Length == 1
+            ? "Передача добавлена в очередь"
+            : $"В очередь добавлено: {paths.Length}");
     }
 
     private void DragHandle_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -421,7 +420,7 @@ public partial class MainWindow : Window
         var device = RequireOnlineDevice();
         if (device is null)
             return;
-        var result = _devicesService.StartScreenMirroring(device.Serial);
+        var result = _devicesService.StartScreenMirroring(device.Serial, _settings.Current.ScrcpyPreset);
         if (result.IsSuccess)
             SetOperationStatus("scrcpy запущен ✓");
         else
@@ -485,12 +484,39 @@ public partial class MainWindow : Window
         RefreshSmsBubbleVisibility();
     });
 
+    private void TransfersChanged(object? sender, EventArgs e) => Dispatcher.BeginInvoke(() =>
+    {
+        if (_activeDevice is null)
+            return;
+        var job = _transfers.Snapshot.FirstOrDefault(item => item.DeviceSerial == _activeDevice.Serial);
+        if (job is null)
+            return;
+        var message = job.State switch
+        {
+            TransferJobState.Queued => $"В очереди: {job.Name}",
+            TransferJobState.Running when job.Progress is double progress =>
+                $"{job.Name}: {progress:P0}",
+            TransferJobState.Running => $"Выполняется: {job.Name}",
+            TransferJobState.Completed => $"Готово: {job.Name} ✓",
+            TransferJobState.Cancelled => $"Отменено: {job.Name}",
+            _ => $"Ошибка {job.Name}: {job.Message}"
+        };
+        SetOperationStatus(message, job.State == TransferJobState.Failed);
+    });
+
+    private void PhotoDetected(object? sender, PhotoImportEvent e) => Dispatcher.BeginInvoke(() =>
+    {
+        if (_activeDevice?.Serial != e.DeviceSerial)
+            return;
+        SetOperationStatus(e.Message, e.Message.StartsWith("Не удалось", StringComparison.Ordinal));
+    });
+
     private void FilesButton_Click(object sender, RoutedEventArgs e)
     {
         var device = RequireOnlineDevice();
         if (device is null)
             return;
-        new RemoteFilesWindow(_devicesService, _desktop, device) { Owner = this }.Show();
+        new RemoteFilesWindow(_devicesService, _desktop, _transfers, device) { Owner = this }.Show();
         SetOperationStatus("Открыт ADB-браузер файлов");
     }
 
@@ -514,7 +540,7 @@ public partial class MainWindow : Window
         });
     }
 
-    private async void InstallButton_Click(object sender, RoutedEventArgs e)
+    private void InstallButton_Click(object sender, RoutedEventArgs e)
     {
         var device = RequireOnlineDevice();
         if (device is null)
@@ -523,7 +549,11 @@ public partial class MainWindow : Window
         var dialog = new OpenFileDialog { Filter = "Android package (*.apk)|*.apk", Multiselect = true };
         if (dialog.ShowDialog(this) != true)
             return;
-        await InstallApksAsync(device, dialog.FileNames);
+        foreach (var path in dialog.FileNames)
+            _transfers.EnqueueUpload(device.Serial, path);
+        SetOperationStatus(dialog.FileNames.Length == 1
+            ? "APK добавлен в очередь установки"
+            : $"APK добавлены в очередь: {dialog.FileNames.Length}");
     }
 
     private async void CompanionButton_Click(object sender, RoutedEventArgs e)
@@ -594,20 +624,27 @@ public partial class MainWindow : Window
             !pairing.LaunchResult.IsSuccess);
     }
 
-    private async Task InstallApksAsync(AndroidDevice device, IReadOnlyList<string> paths)
+    private void RecordButton_Click(object sender, RoutedEventArgs e)
     {
-        await RunOperationAsync(async token =>
+        var device = RequireOnlineDevice();
+        if (device is null)
+            return;
+        var file = _recordings.CreateFilePath(device);
+        var result = _devicesService.StartScreenRecording(device.Serial, file, _settings.Current.ScrcpyPreset);
+        if (!result.IsSuccess)
         {
-            for (var i = 0; i < paths.Count; i++)
-            {
-                SetOperationStatus($"Устанавливаю {Path.GetFileName(paths[i])} ({i + 1}/{paths.Count})…");
-                var result = await _devicesService.InstallApkAsync(device.Serial, paths[i], token);
-                if (!result.IsSuccess)
-                    throw new InvalidOperationException(result.BestMessage);
-            }
-            SetOperationStatus("Приложение установлено ✓");
-        });
+            SetOperationStatus(result.BestMessage, true);
+            return;
+        }
+        SetOperationStatus($"Запись начата: {Path.GetFileName(file)} · закройте окно scrcpy для завершения");
+        _desktop.OpenFolder(_recordings.Folder);
     }
+
+    private void TransfersButton_Click(object sender, RoutedEventArgs e) =>
+        new TransferQueueWindow(_transfers) { Owner = this }.Show();
+
+    private void WirelessButton_Click(object sender, RoutedEventArgs e) =>
+        new WirelessPairingWindow(_devicesService) { Owner = this }.Show();
 
     private void ShellButton_Click(object sender, RoutedEventArgs e)
     {

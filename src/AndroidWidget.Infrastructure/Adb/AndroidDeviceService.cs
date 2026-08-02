@@ -59,15 +59,17 @@ public sealed class AndroidDeviceService : IAndroidDeviceService
         _commands.RunAsync(new[] { "-s", serial, "install", "-r", filePath }, cancellationToken,
             TimeSpan.FromMinutes(5));
 
-    public Task<OperationResult> PushFileAsync(string serial, string filePath,
+    public Task<OperationResult> PushFileAsync(string serial, string filePath, IProgress<double>? progress = null,
         CancellationToken cancellationToken = default) =>
-        _commands.RunAsync(new[] { "-s", serial, "push", filePath, $"/sdcard/Download/{Path.GetFileName(filePath)}" },
-            cancellationToken, TimeSpan.FromMinutes(10));
+        _commands.RunAsync(new[]
+            {
+                "-s", serial, "push", filePath, $"/sdcard/Download/{Path.GetFileName(filePath)}"
+            }, cancellationToken, TimeSpan.FromMinutes(10), progress);
 
     public Task<OperationResult> PullFileAsync(string serial, string remotePath, string localPath,
-        CancellationToken cancellationToken = default) =>
+        IProgress<double>? progress = null, CancellationToken cancellationToken = default) =>
         _commands.RunAsync(new[] { "-s", serial, "pull", remotePath, localPath }, cancellationToken,
-            TimeSpan.FromMinutes(10));
+            TimeSpan.FromMinutes(10), progress);
 
     public async Task<IReadOnlyList<RemoteEntry>> ListDirectoryAsync(string serial, string remotePath,
         CancellationToken cancellationToken = default)
@@ -99,7 +101,52 @@ public sealed class AndroidDeviceService : IAndroidDeviceService
         _commands.RunAsync(new[] { "-s", serial, "shell", "input", "keyevent", "26" }, cancellationToken,
             DefaultTimeout);
 
-    public OperationResult StartScreenMirroring(string serial) => _screenMirroring.Start(serial);
+    public Task<OperationResult> PairWirelessAsync(string endpoint, string pairingCode,
+        CancellationToken cancellationToken = default)
+    {
+        if (!IsValidEndpoint(endpoint))
+            return Task.FromResult(OperationResult.Failure("Введите адрес в формате host:port."));
+        if (!Regex.IsMatch(pairingCode, "^[0-9]{6}$"))
+            return Task.FromResult(OperationResult.Failure("Код сопряжения должен содержать шесть цифр."));
+        return _commands.RunAsync(new[] { "pair", endpoint, pairingCode }, cancellationToken,
+            TimeSpan.FromSeconds(45));
+    }
+
+    public Task<OperationResult> ConnectWirelessAsync(string endpoint,
+        CancellationToken cancellationToken = default)
+    {
+        if (!IsValidEndpoint(endpoint))
+            return Task.FromResult(OperationResult.Failure("Введите адрес в формате host:port."));
+        return _commands.RunAsync(new[] { "connect", endpoint }, cancellationToken, TimeSpan.FromSeconds(30));
+    }
+
+    public async Task<OperationResult> PairWirelessQrAsync(string serviceName, string password,
+        CancellationToken cancellationToken = default)
+    {
+        if (!Regex.IsMatch(serviceName, "^studio-[A-Za-z0-9]{10}$") ||
+            !Regex.IsMatch(password, "^[A-Za-z0-9]{12,32}$"))
+            return OperationResult.Failure("Некорректная QR-сессия Wireless debugging.");
+
+        var deadline = DateTimeOffset.UtcNow.AddMinutes(2);
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var services = await _commands.RunAsync(new[] { "mdns", "services" }, cancellationToken,
+                TimeSpan.FromSeconds(8));
+            if (services.IsSuccess && TryFindPairingEndpoint(services.StandardOutput, serviceName, out var endpoint))
+                return await _commands.RunAsync(new[] { "pair", endpoint, password }, cancellationToken,
+                    TimeSpan.FromSeconds(45));
+            await Task.Delay(700, cancellationToken);
+        }
+        return OperationResult.Failure("Телефон не появился в mDNS. Проверьте общую Wi-Fi сеть и повторите сканирование QR.");
+    }
+
+    public OperationResult StartScreenMirroring(string serial, ScrcpyPreset preset = ScrcpyPreset.Balanced) =>
+        _screenMirroring.Start(serial, preset);
+
+    public OperationResult StartScreenRecording(string serial, string localPath,
+        ScrcpyPreset preset = ScrcpyPreset.Balanced) =>
+        _screenMirroring.StartRecording(serial, localPath, preset);
 
     public OperationResult StartShell(string serial)
     {
@@ -178,6 +225,38 @@ public sealed class AndroidDeviceService : IAndroidDeviceService
     }
 
     private static bool IsWirelessSerial(string serial) => serial.Contains(':');
+    private static bool IsValidEndpoint(string endpoint)
+    {
+        if (string.IsNullOrWhiteSpace(endpoint) || endpoint.Length > 255 || endpoint.Any(char.IsWhiteSpace))
+            return false;
+        return Uri.TryCreate($"tcp://{endpoint}", UriKind.Absolute, out var uri) &&
+               uri.Port is > 0 and <= 65535 && !string.IsNullOrWhiteSpace(uri.Host);
+    }
+
+    private static bool TryFindPairingEndpoint(string output, string serviceName, out string endpoint)
+    {
+        foreach (var line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = Regex.Split(line.Trim(), "\\s+");
+            if (parts.Length >= 3 && parts[0] == serviceName && parts[1] == "_adb-tls-pairing._tcp" &&
+                IsValidEndpoint(parts[2]))
+            {
+                endpoint = parts[2];
+                return true;
+            }
+        }
+        endpoint = string.Empty;
+        return false;
+    }
+
+    public static bool VerifyWirelessPairingParser()
+    {
+        const string sample = "List of discovered mdns services\n" +
+                              "studio-A1B2C3D4E5 _adb-tls-pairing._tcp 192.0.2.1:37123\n" +
+                              "adb-demo _adb-tls-connect._tcp 192.0.2.1:38888\n";
+        return TryFindPairingEndpoint(sample, "studio-A1B2C3D4E5", out var endpoint) &&
+               endpoint == "192.0.2.1:37123";
+    }
     private static string CombineRemotePath(string parent, string child) => $"{parent.TrimEnd('/')}/{child}";
 
     private sealed record DiscoveredDevice(string Serial, DeviceConnectionState State, string Model);

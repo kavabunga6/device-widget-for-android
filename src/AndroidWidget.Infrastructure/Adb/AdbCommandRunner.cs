@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Text;
+using System.Text.RegularExpressions;
 using AndroidWidget.Core.Operations;
 
 namespace AndroidWidget.Infrastructure.Adb;
@@ -13,9 +15,9 @@ public sealed class AdbCommandRunner
     public string ExecutablePath => _executableProvider.GetPath();
 
     public Task<OperationResult> RunAsync(IEnumerable<string> arguments, CancellationToken cancellationToken = default,
-        TimeSpan? timeout = null) =>
+        TimeSpan? timeout = null, IProgress<double>? progress = null) =>
         RunProcessAsync(ExecutablePath, arguments, cancellationToken,
-            timeout ?? TimeSpan.FromSeconds(15));
+            timeout ?? TimeSpan.FromSeconds(15), progress);
 
     public Task<OperationResult> RunBinaryToFileAsync(IEnumerable<string> arguments, string outputPath,
         CancellationToken cancellationToken = default, TimeSpan? timeout = null) =>
@@ -23,7 +25,7 @@ public sealed class AdbCommandRunner
             timeout ?? TimeSpan.FromSeconds(30));
 
     private static async Task<OperationResult> RunProcessAsync(string fileName, IEnumerable<string> arguments,
-        CancellationToken cancellationToken, TimeSpan timeout)
+        CancellationToken cancellationToken, TimeSpan timeout, IProgress<double>? progress)
     {
         var info = CreateStartInfo(fileName, arguments);
         using var process = new Process { StartInfo = info };
@@ -36,8 +38,8 @@ public sealed class AdbCommandRunner
             return OperationResult.Failure($"ADB не найден. Установите Android Platform Tools или используйте встроенный scrcpy. ({ex.Message})", -1);
         }
 
-        var outputTask = process.StandardOutput.ReadToEndAsync();
-        var errorTask = process.StandardError.ReadToEndAsync();
+        var outputTask = ReadTextAsync(process.StandardOutput, progress);
+        var errorTask = ReadTextAsync(process.StandardError, progress);
         using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutSource.CancelAfter(timeout);
         try
@@ -52,7 +54,10 @@ public sealed class AdbCommandRunner
             return new OperationResult(-2, await outputTask, "Команда ADB превысила время ожидания.");
         }
 
-        return new OperationResult(process.ExitCode, await outputTask, await errorTask);
+        var result = new OperationResult(process.ExitCode, await outputTask, await errorTask);
+        if (result.IsSuccess)
+            progress?.Report(1);
+        return result;
     }
 
     private static async Task<OperationResult> RunBinaryToFileAsync(string fileName,
@@ -105,6 +110,32 @@ public sealed class AdbCommandRunner
         foreach (var argument in arguments)
             info.ArgumentList.Add(argument);
         return info;
+    }
+
+    private static async Task<string> ReadTextAsync(StreamReader reader, IProgress<double>? progress)
+    {
+        var output = new StringBuilder();
+        var buffer = new char[512];
+        var progressTail = string.Empty;
+        while (true)
+        {
+            var read = await reader.ReadAsync(buffer);
+            if (read == 0)
+                break;
+            var chunk = new string(buffer, 0, read);
+            output.Append(chunk);
+            if (progress is null)
+                continue;
+
+            var candidate = progressTail + chunk;
+            foreach (Match match in Regex.Matches(candidate, @"(?<!\d)(\d{1,3})%"))
+            {
+                if (int.TryParse(match.Groups[1].Value, out var percent))
+                    progress.Report(Math.Clamp(percent / 100d, 0, 1));
+            }
+            progressTail = candidate.Length <= 16 ? candidate : candidate[^16..];
+        }
+        return output.ToString();
     }
 
     private static void TryKill(Process process)

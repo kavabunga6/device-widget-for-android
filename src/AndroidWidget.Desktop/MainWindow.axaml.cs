@@ -4,6 +4,7 @@ using AndroidWidget.Protocol;
 using Avalonia.Controls;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 
 namespace AndroidWidget.Desktop;
@@ -11,9 +12,13 @@ namespace AndroidWidget.Desktop;
 public sealed partial class MainWindow : Window
 {
     private readonly CompanionHostService _host;
+    private readonly PortableAdbService _adb = new();
     private readonly ObservableCollection<DeviceCard> _devices = new();
+    private readonly ObservableCollection<AdbDeviceChoice> _adbDevices = new();
     private readonly ObservableCollection<NotificationCard> _notifications = new();
     private readonly Dictionary<string, string> _lastNotificationSignatures = new(StringComparer.Ordinal);
+    private readonly DispatcherTimer _adbRefreshTimer;
+    private CancellationTokenSource? _adbOperation;
 
     public MainWindow()
     {
@@ -24,9 +29,22 @@ public sealed partial class MainWindow : Window
         _host.DeviceChanged += HandleDeviceChanged;
         _host.NotificationReceived += HandleNotification;
         DevicesList.ItemsSource = _devices;
+        AdbDeviceCombo.ItemsSource = _adbDevices;
         NotificationsList.ItemsSource = _notifications;
-        Opened += async (_, _) => await StartHostAsync();
-        Closed += async (_, _) => await _host.DisposeAsync();
+        _adbRefreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
+        _adbRefreshTimer.Tick += async (_, _) => await RefreshAdbAsync();
+        Opened += async (_, _) =>
+        {
+            await StartHostAsync();
+            await RefreshAdbAsync();
+            _adbRefreshTimer.Start();
+        };
+        Closed += async (_, _) =>
+        {
+            _adbRefreshTimer.Stop();
+            _adbOperation?.Cancel();
+            await _host.DisposeAsync();
+        };
     }
 
     private async Task StartHostAsync()
@@ -61,6 +79,122 @@ public sealed partial class MainWindow : Window
             await clipboard.SetTextAsync(PairingUriText.Text);
             PairingHintText.Text = "Ссылка скопирована";
         }
+    }
+
+    private async void RefreshAdbButton_Click(object? sender, RoutedEventArgs e) => await RefreshAdbAsync();
+
+    private async Task RefreshAdbAsync()
+    {
+        try
+        {
+            var selectedSerial = (AdbDeviceCombo.SelectedItem as AdbDeviceChoice)?.Serial;
+            var discovered = await _adb.GetDevicesAsync(CancellationToken.None);
+            _adbDevices.Clear();
+            foreach (var device in discovered)
+                _adbDevices.Add(new AdbDeviceChoice(device.Serial, device.Name, device.Wireless));
+            AdbDeviceCombo.SelectedItem = _adbDevices.FirstOrDefault(device => device.Serial == selectedSerial)
+                                          ?? _adbDevices.FirstOrDefault();
+            AdbStatusText.Text = _adbDevices.Count == 0
+                ? "ADB-устройства не найдены"
+                : $"Устройств: {_adbDevices.Count}";
+        }
+        catch (Exception ex)
+        {
+            AdbStatusText.Text = $"ADB: {ex.Message}";
+        }
+    }
+
+    private void AdbScreenButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (SelectedAdbDevice() is not { } device)
+            return;
+        var result = _adb.StartScrcpy(device.Serial);
+        AdbStatusText.Text = result.IsSuccess ? "scrcpy запущен" : result.Message;
+    }
+
+    private void AdbRecordButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (SelectedAdbDevice() is not { } device)
+            return;
+        var folder = ResolveUserFolder(Environment.SpecialFolder.MyVideos, "Android Widget");
+        Directory.CreateDirectory(folder);
+        var path = Path.Combine(folder, $"Android_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.mkv");
+        var result = _adb.StartScrcpy(device.Serial, path);
+        AdbStatusText.Text = result.IsSuccess ? $"Запись: {path}" : result.Message;
+    }
+
+    private async void AdbScreenshotButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (SelectedAdbDevice() is not { } device)
+            return;
+        var folder = ResolveUserFolder(Environment.SpecialFolder.MyPictures, "Android Widget");
+        Directory.CreateDirectory(folder);
+        var path = Path.Combine(folder, $"Android_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.png");
+        await RunAdbOperationAsync(token => _adb.ScreenshotAsync(device.Serial, path, token),
+            result => result.IsSuccess ? $"Скриншот: {path}" : result.Message);
+    }
+
+    private async void AdbPushButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (SelectedAdbDevice() is not { } device)
+            return;
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Отправить файл на Android",
+            AllowMultiple = true
+        });
+        foreach (var file in files)
+        {
+            var path = file.Path.LocalPath;
+            await RunAdbOperationAsync(token => _adb.PushAsync(device.Serial, path, token),
+                result => result.IsSuccess ? $"Передано: {Path.GetFileName(path)}" : result.Message);
+        }
+    }
+
+    private async void WirelessPairButton_Click(object? sender, RoutedEventArgs e) =>
+        await RunAdbOperationAsync(token => _adb.PairAsync(WirelessEndpointText.Text ?? string.Empty,
+                WirelessCodeText.Text ?? string.Empty, token),
+            result => result.IsSuccess ? "Wireless debugging сопряжён" : result.Message);
+
+    private async void WirelessConnectButton_Click(object? sender, RoutedEventArgs e)
+    {
+        await RunAdbOperationAsync(token => _adb.ConnectAsync(WirelessEndpointText.Text ?? string.Empty, token),
+            result => result.IsSuccess ? "Wi-Fi ADB подключён" : result.Message);
+        await RefreshAdbAsync();
+    }
+
+    private AdbDeviceChoice? SelectedAdbDevice()
+    {
+        if (AdbDeviceCombo.SelectedItem is AdbDeviceChoice device)
+            return device;
+        AdbStatusText.Text = "Выберите ADB-устройство";
+        return null;
+    }
+
+    private async Task RunAdbOperationAsync(Func<CancellationToken, Task<PortableCommandResult>> operation,
+        Func<PortableCommandResult, string> message)
+    {
+        _adbOperation?.Cancel();
+        _adbOperation?.Dispose();
+        _adbOperation = new CancellationTokenSource();
+        try
+        {
+            AdbStatusText.Text = "Выполняется…";
+            var result = await operation(_adbOperation.Token);
+            AdbStatusText.Text = message(result);
+        }
+        catch (OperationCanceledException)
+        {
+            AdbStatusText.Text = "Операция отменена";
+        }
+    }
+
+    private static string ResolveUserFolder(Environment.SpecialFolder folder, string child)
+    {
+        var root = Environment.GetFolderPath(folder);
+        if (string.IsNullOrWhiteSpace(root))
+            root = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        return Path.Combine(root, child);
     }
 
     private void HandleDeviceChanged(object? sender, CompanionDeviceState state) =>
@@ -152,4 +286,9 @@ public sealed partial class MainWindow : Window
     }
 
     private sealed record NotificationCard(string AppName, string Title, string Preview);
+    private sealed record AdbDeviceChoice(string Serial, string Name, bool Wireless)
+    {
+        public string Label => $"{Name} · {(Wireless ? "Wi-Fi" : "USB")} · {Serial}";
+        public override string ToString() => Label;
+    }
 }

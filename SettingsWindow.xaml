@@ -243,8 +243,13 @@
                     </Grid>
                 </Border>
 
-                <TextBlock x:Name="StatusText" Grid.Row="5" Margin="2,12,2,0"
-                           Foreground="{DynamicResource TextSecondary}" FontSize="10.5" TextWrapping="Wrap" />
+                <StackPanel Grid.Row="5" Margin="0,12,0,0">
+                    <Button Content="Медиа, запись и импорт фото…" Height="36" Padding="12,0"
+                            Style="{StaticResource ActionButton}" HorizontalContentAlignment="Center"
+                            Click="MediaSettingsButton_Click" />
+                    <TextBlock x:Name="StatusText" Margin="2,8,2,0"
+                               Foreground="{DynamicResource TextSecondary}" FontSize="10.5" TextWrapping="Wrap" />
+                </StackPanel>
 
                 <Button Grid.Row="6" Content="Готово" Width="104" Height="38" HorizontalAlignment="Right"
                         Style="{StaticResource ActionButton}" Margin="0" Click="CloseButton_Click" />

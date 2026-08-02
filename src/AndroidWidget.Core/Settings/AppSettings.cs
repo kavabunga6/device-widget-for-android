@@ -1,3 +1,5 @@
+using AndroidWidget.Core.Devices;
+
 namespace AndroidWidget.Core.Settings;
 
 public sealed record AppSettings(
@@ -11,4 +13,9 @@ public sealed record AppSettings(
     bool ShowSmsBubbles = true,
     int NotificationDisplaySeconds = 10,
     double? MainCardWidth = null,
-    double? MainCardHeight = null);
+    double? MainCardHeight = null,
+    ScrcpyPreset ScrcpyPreset = ScrcpyPreset.Balanced,
+    string? RecordingFolder = null,
+    bool NotifyNewPhotos = true,
+    bool AutoImportPhotos = false,
+    string? PhotoImportFolder = null);

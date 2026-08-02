@@ -74,8 +74,12 @@
 
                 <MenuItem x:Name="ScreenMenuItem" Header="Экран" Tag="&#xE7F4;" BorderBrush="#7559E8"
                           Click="ScreenMenuItem_Click" ToolTip="Трансляция через scrcpy" />
+                <MenuItem x:Name="RecordMenuItem" Header="Запись" Tag="&#xE714;" BorderBrush="#C34755"
+                          Click="RecordMenuItem_Click" ToolTip="Записать экран в MKV" />
                 <MenuItem x:Name="FilesMenuItem" Header="Файлы" Tag="&#xE8B7;" BorderBrush="#E59A27"
                           Click="FilesMenuItem_Click" ToolTip="Файлы и фотографии" />
+                <MenuItem Header="Передачи" Tag="&#xE896;" BorderBrush="#287D8E"
+                          Click="TransfersMenuItem_Click" ToolTip="Очередь, прогресс и отмена" />
                 <MenuItem x:Name="ScreenshotMenuItem" Header="Скриншот" Tag="&#xE722;" BorderBrush="#DD4F78"
                           Click="ScreenshotMenuItem_Click" ToolTip="Сделать снимок экрана" />
                 <MenuItem x:Name="InstallMenuItem" Header="APK" Tag="&#xE7B8;" BorderBrush="#30A66B"
@@ -88,6 +92,8 @@
                           Click="PowerMenuItem_Click" ToolTip="Включить или выключить экран" />
                 <MenuItem Header="MTP" Tag="&#xE7F1;" BorderBrush="#5070A8"
                           Click="MtpMenuItem_Click" ToolTip="Открыть в Проводнике" />
+                <MenuItem Header="Wi-Fi ADB" Tag="&#xE701;" BorderBrush="#326BB5"
+                          Click="WirelessMenuItem_Click" ToolTip="Wireless debugging" />
                 <MenuItem x:Name="CompanionMenuItem" Header="Компаньон" Tag="&#xE8EA;" BorderBrush="#6157A8"
                           Click="CompanionMenuItem_Click" ToolTip="Установить Android Widget Companion" />
                 <MenuItem Header="Настройки" Tag="&#xE713;" BorderBrush="#596273"

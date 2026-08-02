@@ -5,8 +5,10 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using AndroidWidget.Models;
+using AndroidWidget.Presentation.Media;
 using AndroidWidget.Presentation.Notifications;
 using AndroidWidget.Presentation.Screenshots;
+using AndroidWidget.Presentation.Transfers;
 using AndroidWidget.Services;
 using Microsoft.Win32;
 
@@ -19,12 +21,14 @@ public partial class DeviceMiniWindow : Window
     private readonly ISettingsService _settings;
     private readonly IDesktopIntegration _desktop;
     private readonly ScreenshotStorage _screenshots;
+    private readonly RecordingStorage _recordings;
+    private readonly TransferQueueService _transfers;
+    private readonly PhotoImportService _photoImport;
     private readonly ICompanionService _companion;
     private readonly CompanionCoordinator _companionCoordinator;
     private AndroidDevice _device;
     private Point _mouseDownPoint;
     private bool _dragStarted;
-    private bool _transferring;
     private bool _actionRunning;
     private readonly NotificationBubbleStack _smsBubbles = new();
     private readonly DispatcherTimer _operationBubbleTimer;
@@ -33,18 +37,24 @@ public partial class DeviceMiniWindow : Window
 
     public DeviceMiniWindow(AndroidDevice device, IAndroidDeviceService devices,
         ISettingsService settings, IDesktopIntegration desktop, ScreenshotStorage screenshots,
+        RecordingStorage recordings, TransferQueueService transfers, PhotoImportService photoImport,
         ICompanionService companion, CompanionCoordinator companionCoordinator)
     {
         _devices = devices;
         _settings = settings;
         _desktop = desktop;
         _screenshots = screenshots;
+        _recordings = recordings;
+        _transfers = transfers;
+        _photoImport = photoImport;
         _companion = companion;
         _companionCoordinator = companionCoordinator;
         InitializeComponent();
         SmsBubbleItems.ItemsSource = _smsBubbles.Items;
         _smsBubbles.Changed += SmsBubblesChanged;
         _settings.Changed += SettingsChanged;
+        _transfers.Changed += TransfersChanged;
+        _photoImport.PhotoDetected += PhotoDetected;
         _operationBubbleTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(6) };
         _operationBubbleTimer.Tick += (_, _) => HideOperationBubble();
         _device = device;
@@ -52,6 +62,8 @@ public partial class DeviceMiniWindow : Window
         Closed += (_, _) =>
         {
             _settings.Changed -= SettingsChanged;
+            _transfers.Changed -= TransfersChanged;
+            _photoImport.PhotoDetected -= PhotoDetected;
             _smsBubbles.Changed -= SmsBubblesChanged;
             _smsBubbles.Dispose();
             _operationBubbleTimer.Stop();
@@ -182,15 +194,16 @@ public partial class DeviceMiniWindow : Window
     {
         if (Card.IsMouseCaptured)
             Card.ReleaseMouseCapture();
-        if (!_dragStarted && !_transferring)
+        if (!_dragStarted)
             ((App)System.Windows.Application.Current).ShowMainFor(_device.Serial);
         e.Handled = true;
     }
 
     private void ActionMenu_Opening(object sender, RoutedEventArgs e)
     {
-        var enabled = _device.State == DeviceConnectionState.Online && !_actionRunning && !_transferring;
+        var enabled = _device.State == DeviceConnectionState.Online && !_actionRunning;
         ScreenMenuItem.IsEnabled = enabled;
+        RecordMenuItem.IsEnabled = enabled;
         FilesMenuItem.IsEnabled = enabled;
         ScreenshotMenuItem.IsEnabled = enabled;
         InstallMenuItem.IsEnabled = enabled;
@@ -213,16 +226,36 @@ public partial class DeviceMiniWindow : Window
 
     private void ScreenMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        var result = _devices.StartScreenMirroring(_device.Serial);
+        var result = _devices.StartScreenMirroring(_device.Serial, _settings.Current.ScrcpyPreset);
         if (result.IsSuccess)
             SetActionStatus("scrcpy запущен ✓");
         else
             SetActionStatus(result.BestMessage, true);
     }
 
+    private void RecordMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        var file = _recordings.CreateFilePath(_device);
+        var result = _devices.StartScreenRecording(_device.Serial, file, _settings.Current.ScrcpyPreset);
+        if (!result.IsSuccess)
+        {
+            ShowOperationBubble("Запись не начата", result.BestMessage, OperationBubbleState.Error);
+            return;
+        }
+        ShowOperationBubble("Запись экрана", $"{Path.GetFileName(file)} · закройте scrcpy для завершения",
+            OperationBubbleState.Success);
+        _desktop.OpenFolder(_recordings.Folder);
+    }
+
+    private void TransfersMenuItem_Click(object sender, RoutedEventArgs e) =>
+        new TransferQueueWindow(_transfers) { Owner = this }.Show();
+
+    private void WirelessMenuItem_Click(object sender, RoutedEventArgs e) =>
+        new WirelessPairingWindow(_devices) { Owner = this }.Show();
+
     private void FilesMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        new RemoteFilesWindow(_devices, _desktop, _device) { Owner = this }.Show();
+        new RemoteFilesWindow(_devices, _desktop, _transfers, _device) { Owner = this }.Show();
         SetActionStatus("Открыт браузер файлов");
     }
 
@@ -271,6 +304,37 @@ public partial class DeviceMiniWindow : Window
 
         _smsBubbles.Restart(NotificationDisplayDuration);
         RefreshSmsBubbleVisibility();
+    });
+
+    private void TransfersChanged(object? sender, EventArgs e) => Dispatcher.BeginInvoke(() =>
+    {
+        var job = _transfers.Snapshot.FirstOrDefault(item => item.DeviceSerial == _device.Serial);
+        if (job is null)
+            return;
+        var state = job.State switch
+        {
+            TransferJobState.Queued => OperationBubbleState.Progress,
+            TransferJobState.Running => OperationBubbleState.Progress,
+            TransferJobState.Completed => OperationBubbleState.Success,
+            TransferJobState.Failed => OperationBubbleState.Error,
+            TransferJobState.Cancelled => OperationBubbleState.Error,
+            _ => OperationBubbleState.Progress
+        };
+        var message = job.State == TransferJobState.Running && job.Progress is double progress
+            ? $"{job.Name} · {progress:P0}"
+            : $"{job.Name} · {job.Message}";
+        ShowOperationBubble(job.Kind == TransferJobKind.InstallApk ? "Установка APK" : "Передача", message, state);
+        OperationProgressBar.IsIndeterminate = job.Progress is null;
+        OperationProgressBar.Value = (job.Progress ?? 0) * 100;
+    });
+
+    private void PhotoDetected(object? sender, PhotoImportEvent e) => Dispatcher.BeginInvoke(() =>
+    {
+        if (e.DeviceSerial != _device.Serial)
+            return;
+        var error = e.Message.StartsWith("Не удалось", StringComparison.Ordinal);
+        ShowOperationBubble(e.Imported ? "Новое фото импортировано" : "Новое фото", e.Message,
+            error ? OperationBubbleState.Error : OperationBubbleState.Success);
     });
 
     private void OperationBubble_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -346,7 +410,7 @@ public partial class DeviceMiniWindow : Window
         }, "Делаю снимок…", "Скриншот сохранён ✓");
     }
 
-    private async void InstallMenuItem_Click(object sender, RoutedEventArgs e)
+    private void InstallMenuItem_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFileDialog
         {
@@ -357,16 +421,11 @@ public partial class DeviceMiniWindow : Window
         if (dialog.ShowDialog(this) != true)
             return;
 
-        await RunMenuActionAsync(async () =>
-        {
-            for (var index = 0; index < dialog.FileNames.Length; index++)
-            {
-                SetActionStatus($"Установка {index + 1}/{dialog.FileNames.Length}…");
-                var result = await _devices.InstallApkAsync(_device.Serial, dialog.FileNames[index]);
-                if (!result.IsSuccess)
-                    throw new InvalidOperationException(result.BestMessage);
-            }
-        }, "Устанавливаю APK…", "Приложение установлено ✓");
+        foreach (var path in dialog.FileNames)
+            _transfers.EnqueueUpload(_device.Serial, path);
+        SetActionStatus(dialog.FileNames.Length == 1
+            ? "APK добавлен в очередь"
+            : $"В очередь добавлено APK: {dialog.FileNames.Length}");
     }
 
     private async void CompanionMenuItem_Click(object sender, RoutedEventArgs e)
@@ -510,10 +569,10 @@ public partial class DeviceMiniWindow : Window
 
     private void Card_DragLeave(object sender, DragEventArgs e) => DropOverlay.Visibility = Visibility.Collapsed;
 
-    private async void Card_Drop(object sender, DragEventArgs e)
+    private void Card_Drop(object sender, DragEventArgs e)
     {
         DropOverlay.Visibility = Visibility.Collapsed;
-        if (_transferring || _device.State != DeviceConnectionState.Online ||
+        if (_device.State != DeviceConnectionState.Online ||
             !e.Data.GetDataPresent(DataFormats.FileDrop))
             return;
 
@@ -522,66 +581,13 @@ public partial class DeviceMiniWindow : Window
         if (paths.Length == 0)
             return;
 
-        _transferring = true;
-        string? currentName = null;
-        try
-        {
-            var apkCount = 0;
-            for (var index = 0; index < paths.Length; index++)
-            {
-                var path = paths[index];
-                var name = Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar));
-                currentName = name;
-                var isApk = File.Exists(path) && Path.GetExtension(path).Equals(".apk", StringComparison.OrdinalIgnoreCase);
-                if (isApk)
-                    apkCount++;
-                var progress = paths.Length == 1 ? name : $"{name} · {index + 1} из {paths.Length}";
-                if (File.Exists(path))
-                    progress += $" · {FormatFileSize(new FileInfo(path).Length)}";
-                ShowOperationBubble(isApk ? "Установка APK" : "Передача на телефон", progress,
-                    OperationBubbleState.Progress);
-                SetActionStatus(isApk ? $"Устанавливаю {name}…" : $"Передаю {name}…");
-                var result = isApk
-                    ? await _devices.InstallApkAsync(_device.Serial, path)
-                    : await _devices.PushFileAsync(_device.Serial, path);
-                if (!result.IsSuccess)
-                    throw new InvalidOperationException(result.BestMessage);
-            }
-            var successTitle = apkCount == paths.Length
-                ? paths.Length == 1 ? "APK установлен" : "APK установлены"
-                : apkCount == 0
-                    ? paths.Length == 1 ? "Файл передан" : "Файлы переданы"
-                    : "Файлы обработаны";
-            var successMessage = paths.Length == 1
-                ? Path.GetFileName(paths[0].TrimEnd(Path.DirectorySeparatorChar))
-                : $"Успешно: {paths.Length}";
-            ShowOperationBubble(successTitle, successMessage, OperationBubbleState.Success);
-            SetActionStatus(paths.Length == 1 ? "Готово ✓" : $"Обработано: {paths.Length} ✓");
-        }
-        catch (Exception ex)
-        {
-            var error = string.IsNullOrWhiteSpace(currentName) ? ex.Message : $"{currentName}: {ex.Message}";
-            ShowOperationBubble("Ошибка операции", error, OperationBubbleState.Error);
-            SetActionStatus(ex.Message, true);
-        }
-        finally
-        {
-            _transferring = false;
-        }
+        foreach (var path in paths)
+            _transfers.EnqueueUpload(_device.Serial, path);
+        ShowOperationBubble("Очередь передач",
+            paths.Length == 1 ? Path.GetFileName(paths[0]) : $"Добавлено объектов: {paths.Length}",
+            OperationBubbleState.Progress);
+        SetActionStatus("Передача добавлена в очередь");
         e.Handled = true;
-    }
-
-    private static string FormatFileSize(long bytes)
-    {
-        string[] units = { "Б", "КБ", "МБ", "ГБ" };
-        var value = (double)bytes;
-        var unit = 0;
-        while (value >= 1024 && unit < units.Length - 1)
-        {
-            value /= 1024;
-            unit++;
-        }
-        return unit == 0 ? $"{bytes} {units[unit]}" : $"{value:0.#} {units[unit]}";
     }
 
     private enum OperationBubbleState

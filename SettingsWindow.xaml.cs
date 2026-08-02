@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using AndroidWidget.Presentation.Media;
 using AndroidWidget.Presentation.Screenshots;
 using AndroidWidget.Services;
 using Forms = System.Windows.Forms;
@@ -12,12 +13,17 @@ public partial class SettingsWindow : Window
 {
     private readonly ISettingsService _settings;
     private readonly ScreenshotStorage _screenshots;
+    private readonly RecordingStorage _recordings;
+    private readonly PhotoImportService _photoImport;
     private bool _loading = true;
 
-    public SettingsWindow(ISettingsService settings, ScreenshotStorage screenshots)
+    public SettingsWindow(ISettingsService settings, ScreenshotStorage screenshots,
+        RecordingStorage recordings, PhotoImportService photoImport)
     {
         _settings = settings;
         _screenshots = screenshots;
+        _recordings = recordings;
+        _photoImport = photoImport;
         InitializeComponent();
         var current = _settings.Current;
         DarkThemeRadio.IsChecked = current.Theme == WidgetTheme.Dark;
@@ -123,6 +129,9 @@ public partial class SettingsWindow : Window
     }
 
     private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();
+
+    private void MediaSettingsButton_Click(object sender, RoutedEventArgs e) =>
+        new MediaSettingsWindow(_settings, _recordings, _photoImport) { Owner = this }.ShowDialog();
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {

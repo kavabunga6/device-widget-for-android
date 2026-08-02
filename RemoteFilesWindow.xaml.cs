@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using AndroidWidget.Presentation.Files;
+using AndroidWidget.Presentation.Transfers;
 
 namespace AndroidWidget;
 
@@ -10,16 +11,22 @@ public partial class RemoteFilesWindow : Window
 {
     private readonly IAndroidDeviceService _devices;
     private readonly IDesktopIntegration _desktop;
+    private readonly TransferQueueService _transfers;
     private readonly AndroidDevice _device;
     private readonly CancellationTokenSource _lifetime = new();
     private string _currentPath = "/sdcard";
     private bool _busy;
+    private Point _dragStart;
+    private bool _dragPreparing;
+    private readonly Dictionary<string, string> _dragCache = new(StringComparer.Ordinal);
 
-    public RemoteFilesWindow(IAndroidDeviceService devices, IDesktopIntegration desktop, AndroidDevice device)
+    public RemoteFilesWindow(IAndroidDeviceService devices, IDesktopIntegration desktop,
+        TransferQueueService transfers, AndroidDevice device)
     {
         InitializeComponent();
         _devices = devices;
         _desktop = desktop;
+        _transfers = transfers;
         _device = device;
         DeviceText.Text = $"{device.DisplayName}  ·  {device.ConnectionLabel}";
         Closed += (_, _) => _lifetime.Cancel();
@@ -102,7 +109,8 @@ public partial class RemoteFilesWindow : Window
             var cacheFolder = Path.Combine(Path.GetTempPath(), "AndroidWidget", safeSerial);
             Directory.CreateDirectory(cacheFolder);
             var localPath = Path.Combine(cacheFolder, entry.DisplayName);
-            var result = await _devices.PullFileAsync(_device.Serial, entry.FullPath, localPath, _lifetime.Token);
+            var job = _transfers.EnqueueDownload(_device.Serial, entry.FullPath, localPath);
+            var result = await _transfers.WaitAsync(job);
             if (!result.IsSuccess)
                 throw new InvalidOperationException(result.BestMessage);
             var open = _desktop.OpenFile(localPath);
@@ -129,7 +137,8 @@ public partial class RemoteFilesWindow : Window
                 "Downloads", "Android Widget");
             Directory.CreateDirectory(downloads);
             var localPath = GetUniquePath(Path.Combine(downloads, entry.DisplayName));
-            var result = await _devices.PullFileAsync(_device.Serial, entry.FullPath, localPath, _lifetime.Token);
+            var job = _transfers.EnqueueDownload(_device.Serial, entry.FullPath, localPath);
+            var result = await _transfers.WaitAsync(job);
             if (!result.IsSuccess)
                 throw new InvalidOperationException(result.BestMessage);
             var reveal = _desktop.RevealFile(localPath);
@@ -140,6 +149,57 @@ public partial class RemoteFilesWindow : Window
         catch (OperationCanceledException) { }
         catch (Exception ex) { SetStatus(ex.Message, true); }
         finally { _busy = false; }
+    }
+
+    private void FilesList_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e) =>
+        _dragStart = e.GetPosition(FilesList);
+
+    private async void FilesList_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (_dragPreparing || _busy || e.LeftButton != MouseButtonState.Pressed ||
+            FilesList.SelectedItem is not RemoteEntryViewModel { Entry.IsDirectory: false } item)
+            return;
+        var position = e.GetPosition(FilesList);
+        if (Math.Abs(position.X - _dragStart.X) < SystemParameters.MinimumHorizontalDragDistance &&
+            Math.Abs(position.Y - _dragStart.Y) < SystemParameters.MinimumVerticalDragDistance)
+            return;
+
+        _dragPreparing = true;
+        _busy = true;
+        try
+        {
+            if (!_dragCache.TryGetValue(item.Entry.FullPath, out var localPath) || !File.Exists(localPath))
+            {
+                var dragFolder = Path.Combine(Path.GetTempPath(), "AndroidWidget", "DragOut",
+                    Guid.NewGuid().ToString("N"));
+                Directory.CreateDirectory(dragFolder);
+                localPath = Path.Combine(dragFolder, item.Entry.DisplayName);
+                SetStatus($"Подготавливаю {item.Entry.DisplayName} для перетаскивания…");
+                var job = _transfers.EnqueueDownload(_device.Serial, item.Entry.FullPath, localPath);
+                var result = await _transfers.WaitAsync(job);
+                if (!result.IsSuccess)
+                    throw new InvalidOperationException(result.BestMessage);
+                _dragCache[item.Entry.FullPath] = localPath;
+            }
+            if (Mouse.LeftButton != MouseButtonState.Pressed)
+            {
+                SetStatus("Файл подготовлен · перетащите его ещё раз");
+                return;
+            }
+            var data = new DataObject(DataFormats.FileDrop, new[] { localPath });
+            SetStatus("Перетащите файл в нужную папку");
+            DragDrop.DoDragDrop(FilesList, data, DragDropEffects.Copy);
+            SetStatus("Файл передан приложению назначения ✓");
+        }
+        catch (Exception ex)
+        {
+            SetStatus(ex.Message, true);
+        }
+        finally
+        {
+            _busy = false;
+            _dragPreparing = false;
+        }
     }
 
     private void SetStatus(string message, bool error = false)

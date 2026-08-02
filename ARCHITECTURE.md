@@ -32,11 +32,11 @@
 
 ### AndroidWidget.Infrastructure
 
-- `Adb/AdbCommandRunner` — безопасный запуск команд, таймауты, отмена и захват stdout/stderr;
+- `Adb/AdbCommandRunner` — безопасный запуск команд, таймауты, отмена, прогресс и захват stdout/stderr;
 - `Adb/AndroidDeviceService` — публичный фасад сценариев Android;
 - `Adb/DeviceSnapshotReader` — свойства устройства, заряд, экран и блокировка;
 - `Adb/SmsNotificationReader` — определение SMS-приложения, парсинг и дедупликация уведомлений;
-- `Scrcpy` — извлечение проверенного embedded-пакета и запуск трансляции;
+- `Scrcpy` — извлечение проверенного embedded-пакета, пресеты, трансляция и запись экрана;
 - `Settings/JsonSettingsService` — JSON-настройки и Windows-автозапуск;
 - `Windows/WindowsDesktopIntegration` — Explorer, открытие файлов и MTP;
 - `Diagnostics` — локальный лог и smoke-проверки.
@@ -49,6 +49,8 @@
 - `App` — жизненный цикл и независимая координация окон по serial устройства;
 - `Presentation/Tray` — системный трей и его GDI-иконка;
 - `Presentation/Files` — отображаемая модель файлового браузера;
+- `Presentation/Transfers` — единая последовательная очередь передач с прогрессом и отменой;
+- `Presentation/Media` — пути записей, обнаружение и автоматический импорт новых фотографий;
 - окна WPF — события ввода, визуальное состояние и вызов сценариев через интерфейсы;
 - `Models/PhoneSkin` и `Services/ThemeService` — WPF-зависимые визуальные правила.
 
@@ -80,6 +82,7 @@ dotnet build AndroidWidget.csproj -c Release
 dotnet format AndroidWidget.csproj --verify-no-changes
 dotnet run --project AndroidWidget.csproj -c Release -- --verify-sms-parser
 dotnet run --project AndroidWidget.csproj -c Release -- --verify-scrcpy-bundle
+dotnet run --project AndroidWidget.csproj -c Release -- --verify-wireless-qr
 ```
 
 `Directory.Build.props` включает nullable-контекст, детерминированную сборку и трактует предупреждения как ошибки для всех проектов.
@@ -100,7 +103,7 @@ AndroidWidget.Desktop (Avalonia: Windows / macOS / Linux)
 
 - `AndroidWidget.Protocol` содержит только версионированные сообщения и JSON-настройки.
 - `AndroidWidget.CompanionHost` отвечает за сертификат, одноразовое сопряжение, токены и независимое состояние устройств.
-- `AndroidWidget.Desktop` отображает устройства и уведомления; отключённая карточка удаляется, другая не занимает её состояние.
+- `AndroidWidget.Desktop` отображает устройства и уведомления, а также предоставляет общий UI для ADB, scrcpy, снимков, записи и Wireless debugging; отключённая карточка удаляется, другая не занимает её состояние.
 - `companion-android` содержит foreground-соединение, Android Keystore и `NotificationListenerService`.
 - `ICompanionService` отделяет read-only проверку пакета от явно вызываемой установки; UI вызывает установку только после отдельного пользовательского подтверждения.
 - `tools/CompanionHostSmoke` проходит настоящий WSS handshake, pairing, status и notification через независимый TLS-клиент.

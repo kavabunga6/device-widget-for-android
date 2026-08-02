@@ -244,6 +244,16 @@
                                 <TextBlock Text="Экран" Margin="0,5,0,0" FontSize="10.5" TextAlignment="Center" />
                             </StackPanel>
                         </Button>
+                        <Button Style="{StaticResource AppTileButton}" Click="RecordButton_Click"
+                                ToolTip="Записать экран в MKV через scrcpy">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Border Width="48" Height="48" CornerRadius="14" Background="#C34755">
+                                    <TextBlock Text="&#xE714;" FontFamily="Segoe Fluent Icons" FontSize="22"
+                                               Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <TextBlock Text="Запись" Margin="0,5,0,0" FontSize="10.5" TextAlignment="Center" />
+                            </StackPanel>
+                        </Button>
                         <Button Style="{StaticResource AppTileButton}" Click="FilesButton_Click"
                                 ToolTip="Файлы, фотографии и папки телефона">
                             <StackPanel HorizontalAlignment="Center">
@@ -252,6 +262,16 @@
                                                Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Border>
                                 <TextBlock Text="Файлы" Margin="0,5,0,0" FontSize="10.5" TextAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource AppTileButton}" Click="TransfersButton_Click"
+                                ToolTip="Очередь передач, прогресс и отмена">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Border Width="48" Height="48" CornerRadius="14" Background="#287D8E">
+                                    <TextBlock Text="&#xE896;" FontFamily="Segoe Fluent Icons" FontSize="22"
+                                               Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <TextBlock Text="Передачи" Margin="0,5,0,0" FontSize="10.5" TextAlignment="Center" />
                             </StackPanel>
                         </Button>
                         <Button Style="{StaticResource AppTileButton}" Click="ScreenshotButton_Click"
@@ -312,6 +332,16 @@
                                                Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Border>
                                 <TextBlock Text="MTP" Margin="0,5,0,0" FontSize="10.5" TextAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource AppTileButton}" Click="WirelessButton_Click"
+                                ToolTip="Сопряжение и подключение Wireless debugging">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Border Width="48" Height="48" CornerRadius="14" Background="#326BB5">
+                                    <TextBlock Text="&#xE701;" FontFamily="Segoe Fluent Icons" FontSize="22"
+                                               Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <TextBlock Text="Wi-Fi ADB" Margin="0,5,0,0" FontSize="10.5" TextAlignment="Center" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="CompanionButton" Style="{StaticResource AppTileButton}"
