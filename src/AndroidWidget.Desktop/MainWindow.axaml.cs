@@ -116,7 +116,7 @@ public sealed partial class MainWindow : Window
     {
         if (SelectedAdbDevice() is not { } device)
             return;
-        var folder = ResolveUserFolder(Environment.SpecialFolder.MyVideos, "Android Widget");
+        var folder = ResolveUserFolder(Environment.SpecialFolder.MyVideos, "Device Widget");
         Directory.CreateDirectory(folder);
         var path = Path.Combine(folder, $"Android_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.mkv");
         var result = _adb.StartScrcpy(device.Serial, path);
@@ -127,7 +127,7 @@ public sealed partial class MainWindow : Window
     {
         if (SelectedAdbDevice() is not { } device)
             return;
-        var folder = ResolveUserFolder(Environment.SpecialFolder.MyPictures, "Android Widget");
+        var folder = ResolveUserFolder(Environment.SpecialFolder.MyPictures, "Device Widget");
         Directory.CreateDirectory(folder);
         var path = Path.Combine(folder, $"Android_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.png");
         await RunAdbOperationAsync(token => _adb.ScreenshotAsync(device.Serial, path, token),

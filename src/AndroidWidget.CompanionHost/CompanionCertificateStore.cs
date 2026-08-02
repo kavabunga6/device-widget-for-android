@@ -18,7 +18,7 @@ internal sealed class CompanionCertificateStore
             return LoadCertificate(_certificatePath);
 
         using var key = RSA.Create(3072);
-        var request = new CertificateRequest("CN=Android Widget Companion Host", key,
+        var request = new CertificateRequest("CN=Device Widget Companion Host", key,
             HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
         request.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, true));
         request.CertificateExtensions.Add(new X509KeyUsageExtension(

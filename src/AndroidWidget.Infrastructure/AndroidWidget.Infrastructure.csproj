@@ -17,9 +17,9 @@
                       LogicalName="AndroidWidget.Infrastructure.Bundled.scrcpy-LICENSE.txt" />
     <EmbeddedResource Include="..\..\companion-android\app\build\outputs\apk\release\app-release.apk"
                       Condition="Exists('..\..\companion-android\app\build\outputs\apk\release\app-release.apk')"
-                      LogicalName="AndroidWidget.Infrastructure.Bundled.AndroidWidget-Companion.apk" />
+                      LogicalName="AndroidWidget.Infrastructure.Bundled.DeviceWidget-Companion.apk" />
     <EmbeddedResource Include="..\..\companion-android\app\build\outputs\apk\debug\app-debug.apk"
                       Condition="!Exists('..\..\companion-android\app\build\outputs\apk\release\app-release.apk') And Exists('..\..\companion-android\app\build\outputs\apk\debug\app-debug.apk')"
-                      LogicalName="AndroidWidget.Infrastructure.Bundled.AndroidWidget-Companion.apk" />
+                      LogicalName="AndroidWidget.Infrastructure.Bundled.DeviceWidget-Companion.apk" />
   </ItemGroup>
 </Project>

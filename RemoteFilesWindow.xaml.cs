@@ -134,7 +134,7 @@ public partial class RemoteFilesWindow : Window
         try
         {
             var downloads = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                "Downloads", "Android Widget");
+                "Downloads", "Device Widget");
             Directory.CreateDirectory(downloads);
             var localPath = GetUniquePath(Path.Combine(downloads, entry.DisplayName));
             var job = _transfers.EnqueueDownload(_device.Serial, entry.FullPath, localPath);

@@ -581,7 +581,7 @@ public partial class MainWindow : Window
         }
 
         var consent = MessageBox.Show(this,
-            $"Установить Android Widget Companion на «{device.DisplayName}»?\n\n" +
+            $"Установить Device Widget Companion на «{device.DisplayName}»?\n\n" +
             "Установка начнётся только после вашего подтверждения. Доступ к уведомлениям приложение " +
             "попросит отдельно на телефоне — автоматически он не выдаётся.",
             "Установка компаньона", MessageBoxButton.YesNo, MessageBoxImage.Question,
@@ -594,7 +594,7 @@ public partial class MainWindow : Window
 
         await RunOperationAsync(async token =>
         {
-            SetOperationStatus("Устанавливаю Android Widget Companion…");
+            SetOperationStatus("Устанавливаю Device Widget Companion…");
             var result = await _companion.InstallAsync(device.Serial, token);
             if (!result.IsSuccess)
                 throw new InvalidOperationException(result.BestMessage);
@@ -742,7 +742,7 @@ public partial class MainWindow : Window
                                     (installed || _companion.IsInstallerAvailable);
         CompanionButton.ToolTip = installed
             ? connected
-                ? "Открыть Android Widget Companion и настройки доступа"
+                ? "Открыть Device Widget Companion и настройки доступа"
                 : "Создать код и ссылку сопряжения"
             : _companion.IsInstallerAvailable
                 ? "Установить компаньон только после подтверждения"

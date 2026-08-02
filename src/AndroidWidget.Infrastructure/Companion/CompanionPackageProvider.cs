@@ -4,7 +4,7 @@ namespace AndroidWidget.Infrastructure.Companion;
 
 internal sealed class CompanionPackageProvider
 {
-    private const string ResourceName = "AndroidWidget.Infrastructure.Bundled.AndroidWidget-Companion.apk";
+    private const string ResourceName = "AndroidWidget.Infrastructure.Bundled.DeviceWidget-Companion.apk";
 
     public bool IsAvailable => typeof(CompanionPackageProvider).Assembly.GetManifestResourceInfo(ResourceName) is not null;
 
@@ -40,7 +40,7 @@ internal sealed class CompanionPackageProvider
         var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "AndroidWidget", "companion");
         Directory.CreateDirectory(directory);
-        var target = Path.Combine(directory, $"AndroidWidget-Companion-{hash}.apk");
+        var target = Path.Combine(directory, $"DeviceWidget-Companion-{hash}.apk");
         if (File.Exists(target))
             return target;
 

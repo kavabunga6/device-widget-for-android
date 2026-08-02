@@ -25,7 +25,7 @@ public sealed class PhotoImportService
     public event EventHandler<PhotoImportEvent>? PhotoDetected;
 
     public string Folder => RecordingStorage.ResolveFolder(_settings.Current.PhotoImportFolder,
-        Environment.SpecialFolder.MyPictures, "Android Widget Imports");
+        Environment.SpecialFolder.MyPictures, "Device Widget Imports");
 
     public void SetFolder(string folder)
     {

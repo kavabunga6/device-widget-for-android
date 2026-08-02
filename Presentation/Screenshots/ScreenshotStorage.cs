@@ -7,7 +7,7 @@ public sealed class ScreenshotStorage
     public ScreenshotStorage(ISettingsService settings) => _settings = settings;
 
     public string Folder => string.IsNullOrWhiteSpace(_settings.Current.ScreenshotFolder)
-        ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "Android Widget")
+        ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "Device Widget")
         : _settings.Current.ScreenshotFolder;
 
     public void SetFolder(string folder)

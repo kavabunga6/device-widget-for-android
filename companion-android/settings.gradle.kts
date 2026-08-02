@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "AndroidWidgetCompanion"
+rootProject.name = "DeviceWidgetCompanion"
 include(":app")

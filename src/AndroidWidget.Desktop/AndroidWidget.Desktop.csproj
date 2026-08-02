@@ -5,6 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>AndroidWidget.Desktop</RootNamespace>
+    <AssemblyName>DeviceWidget.Desktop</AssemblyName>
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
 
@@ -18,5 +19,12 @@
     <ProjectReference Include="..\AndroidWidget.Core\AndroidWidget.Core.csproj" />
     <ProjectReference Include="..\AndroidWidget.CompanionHost\AndroidWidget.CompanionHost.csproj" />
     <ProjectReference Include="..\AndroidWidget.Protocol\AndroidWidget.Protocol.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\LICENSE" Link="LICENSE" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\THIRD_PARTY_NOTICES.md" Link="THIRD_PARTY_NOTICES.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\SOURCE_OFFER.md" Link="SOURCE_OFFER.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\licenses\**\*" Link="licenses\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

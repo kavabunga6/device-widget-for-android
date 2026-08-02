@@ -43,7 +43,7 @@ public sealed class ScreenMirroringService
             info.ArgumentList.Add("--serial");
             info.ArgumentList.Add(serial);
             info.ArgumentList.Add("--window-title");
-            info.ArgumentList.Add(recordingPath is null ? "Android Widget · Screen" : "Android Widget · Recording");
+            info.ArgumentList.Add(recordingPath is null ? "Device Widget · Screen" : "Device Widget · Recording");
             AddPresetArguments(info.ArgumentList, preset);
             if (recordingPath is not null)
                 info.ArgumentList.Add($"--record={recordingPath}");

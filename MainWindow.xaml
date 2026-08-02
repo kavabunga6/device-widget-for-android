@@ -1,7 +1,7 @@
 <Window x:Class="AndroidWidget.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Android Widget"
+        Title="Device Widget for Android"
         Icon="{StaticResource AppIconImage}"
         Width="258" Height="392"
         MinWidth="230" MinHeight="350" MaxWidth="1100" MaxHeight="900"
@@ -217,7 +217,7 @@
                     <StackPanel>
                         <TextBlock Text="Действия" FontSize="18" FontWeight="SemiBold"
                                    Foreground="{DynamicResource TextPrimary}" />
-                        <TextBlock Text="Android Widget" FontSize="10" Foreground="{DynamicResource TextSecondary}" />
+                        <TextBlock Text="Device Widget" FontSize="10" Foreground="{DynamicResource TextSecondary}" />
                     </StackPanel>
                     <Button Grid.Column="1" Style="{StaticResource IconButton}" Click="CollapsePanel_Click"
                             ToolTip="Закрыть панель действий">
@@ -345,7 +345,7 @@
                             </StackPanel>
                         </Button>
                         <Button x:Name="CompanionButton" Style="{StaticResource AppTileButton}"
-                                Click="CompanionButton_Click" ToolTip="Установить Android Widget Companion">
+                                Click="CompanionButton_Click" ToolTip="Установить Device Widget Companion">
                             <StackPanel HorizontalAlignment="Center">
                                 <Border Width="48" Height="48" CornerRadius="14" Background="#6157A8">
                                     <TextBlock Text="&#xE8EA;" FontFamily="Segoe Fluent Icons" FontSize="22"

@@ -1,7 +1,7 @@
 <Window x:Class="AndroidWidget.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Настройки Android Widget" Width="440" Height="610"
+        Title="Настройки Device Widget" Width="440" Height="650"
         Icon="{StaticResource AppIconImage}"
         ResizeMode="NoResize" WindowStartupLocation="CenterScreen"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent">
@@ -82,7 +82,7 @@
                         VerticalAlignment="Center">
                     <Border Width="7" Height="11" CornerRadius="2" Background="{DynamicResource Accent}" />
                 </Border>
-                <TextBlock Grid.Column="1" Text="Настройки Android Widget" FontSize="11"
+                <TextBlock Grid.Column="1" Text="Настройки Device Widget" FontSize="11"
                            Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
                 <Button Grid.Column="2" Content="×" Width="30" Height="30" Padding="0" Margin="0"
                         FontSize="17" Style="{StaticResource ActionButton}"
@@ -247,6 +247,9 @@
                     <Button Content="Медиа, запись и импорт фото…" Height="36" Padding="12,0"
                             Style="{StaticResource ActionButton}" HorizontalContentAlignment="Center"
                             Click="MediaSettingsButton_Click" />
+                    <Button Content="Лицензии и сторонние компоненты…" Height="36" Padding="12,0"
+                            Margin="0,8,0,0" Style="{StaticResource ActionButton}"
+                            HorizontalContentAlignment="Center" Click="LicensesButton_Click" />
                     <TextBlock x:Name="StatusText" Margin="2,8,2,0"
                                Foreground="{DynamicResource TextSecondary}" FontSize="10.5" TextWrapping="Wrap" />
                 </StackPanel>

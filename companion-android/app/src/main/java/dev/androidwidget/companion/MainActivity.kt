@@ -2,6 +2,7 @@ package dev.androidwidget.companion
 
 import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
 import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.ComponentName
@@ -80,7 +81,7 @@ class MainActivity : Activity() {
             setPadding(dp(24), dp(28), dp(24), dp(28))
             setBackgroundColor(Color.rgb(32, 33, 36))
         }
-        content.addView(text("Android Widget Companion", 26f, Color.WHITE, true))
+        content.addView(text("Device Widget Companion", 26f, Color.WHITE, true))
         content.addView(text(
             "Локальная защищённая связь с Windows, macOS и Linux",
             14f,
@@ -119,6 +120,11 @@ class MainActivity : Activity() {
             setOnClickListener {
                 runCatching { startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
             }
+        }.withTopMargin(10))
+
+        content.addView(Button(this).apply {
+            text = "Лицензии и сторонние компоненты"
+            setOnClickListener { showOpenSourceLicenses() }
         }.withTopMargin(10))
 
         content.addView(text(
@@ -166,6 +172,17 @@ class MainActivity : Activity() {
                 .isNotificationListenerAccessGranted(component)
         val enabled = Settings.Secure.getString(contentResolver, "enabled_notification_listeners").orEmpty()
         return enabled.split(':').any { ComponentName.unflattenFromString(it) == component }
+    }
+
+    private fun showOpenSourceLicenses() {
+        val notice = resources.openRawResource(R.raw.third_party_notices)
+            .bufferedReader(Charsets.UTF_8)
+            .use { it.readText() }
+        AlertDialog.Builder(this)
+            .setTitle("Лицензии")
+            .setMessage(notice)
+            .setPositiveButton("Готово", null)
+            .show()
     }
 
     private fun text(value: String, size: Float, color: Int, bold: Boolean = false) = TextView(this).apply {

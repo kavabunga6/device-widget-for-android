@@ -106,7 +106,7 @@ public partial class SettingsWindow : Window
     {
         using var dialog = new Forms.FolderBrowserDialog
         {
-            Description = "Выберите папку для скриншотов Android Widget",
+            Description = "Выберите папку для скриншотов Device Widget",
             UseDescriptionForTitle = true,
             SelectedPath = _screenshots.Folder,
             ShowNewFolderButton = true
@@ -132,6 +132,30 @@ public partial class SettingsWindow : Window
 
     private void MediaSettingsButton_Click(object sender, RoutedEventArgs e) =>
         new MediaSettingsWindow(_settings, _recordings, _photoImport) { Owner = this }.ShowDialog();
+
+    private void LicensesButton_Click(object sender, RoutedEventArgs e)
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "THIRD_PARTY_NOTICES.md");
+        if (!File.Exists(path))
+        {
+            StatusText.Foreground = (Brush)FindResource("DangerText");
+            StatusText.Text = "Файл THIRD_PARTY_NOTICES.md не найден рядом с приложением.";
+            return;
+        }
+
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path)
+            {
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            StatusText.Foreground = (Brush)FindResource("DangerText");
+            StatusText.Text = $"Не удалось открыть лицензии: {ex.Message}";
+        }
+    }
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {

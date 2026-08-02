@@ -75,7 +75,7 @@ public partial class App : System.Windows.Application
         _singleInstanceMutex = new Mutex(true, "AndroidWidget.SingleInstance", out var isFirstInstance);
         if (!isFirstInstance)
         {
-            System.Windows.MessageBox.Show("Android Widget уже запущен.", "Android Widget",
+            System.Windows.MessageBox.Show("Device Widget уже запущен.", "Device Widget for Android",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             Shutdown();
             return;
@@ -137,7 +137,7 @@ public partial class App : System.Windows.Application
         _manuallyHidden = true;
         _mainWindow?.Hide();
         CloseMiniWindows();
-        _tray?.ShowInfo("Android Widget", "Виджет продолжает работать в трее.", 1200);
+        _tray?.ShowInfo("Device Widget", "Виджет продолжает работать в трее.", 1200);
     }
 
     public void ShowSettings()
@@ -271,7 +271,7 @@ public partial class App : System.Windows.Application
     {
         if (_devices.Count == 0)
         {
-            _tray?.ShowInfo("Android Widget", "Подключите телефон по USB или Wi-Fi ADB.");
+            _tray?.ShowInfo("Device Widget", "Подключите телефон по USB или Wi-Fi ADB.");
             return;
         }
         ShowSettings();
@@ -280,7 +280,7 @@ public partial class App : System.Windows.Application
     private void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
         _services.Logger.Write($"Unhandled UI exception: {e.Exception}");
-        System.Windows.MessageBox.Show(e.Exception.Message, "Android Widget",
+        System.Windows.MessageBox.Show(e.Exception.Message, "Device Widget for Android",
             MessageBoxButton.OK, MessageBoxImage.Error);
         e.Handled = true;
     }

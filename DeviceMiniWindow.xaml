@@ -95,7 +95,7 @@
                 <MenuItem Header="Wi-Fi ADB" Tag="&#xE701;" BorderBrush="#326BB5"
                           Click="WirelessMenuItem_Click" ToolTip="Wireless debugging" />
                 <MenuItem x:Name="CompanionMenuItem" Header="Компаньон" Tag="&#xE8EA;" BorderBrush="#6157A8"
-                          Click="CompanionMenuItem_Click" ToolTip="Установить Android Widget Companion" />
+                          Click="CompanionMenuItem_Click" ToolTip="Установить Device Widget Companion" />
                 <MenuItem Header="Настройки" Tag="&#xE713;" BorderBrush="#596273"
                           Click="SettingsMenuItem_Click" />
             </ContextMenu>

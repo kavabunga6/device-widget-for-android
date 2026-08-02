@@ -23,7 +23,7 @@ public sealed class TrayIconController : IDisposable
         _icon = new System.Windows.Forms.NotifyIcon
         {
             Icon = _phoneIcon,
-            Text = "Android Widget · устройств нет",
+            Text = "Device Widget · устройств нет",
             Visible = true,
             ContextMenuStrip = menu
         };
@@ -35,10 +35,10 @@ public sealed class TrayIconController : IDisposable
         var unauthorized = devices.FirstOrDefault(device => device.State == DeviceConnectionState.Unauthorized);
         _icon.Icon = unauthorized is null ? _phoneIcon : SystemIcons.Warning;
         _icon.Text = unauthorized is not null
-            ? Truncate($"Android Widget · авторизуйте {unauthorized.DisplayName}")
+            ? Truncate($"Device Widget · авторизуйте {unauthorized.DisplayName}")
             : devices.Count == 0
-                ? "Android Widget · устройств нет"
-                : Truncate($"Android Widget · {GetDeviceSummary(devices)}");
+                ? "Device Widget · устройств нет"
+                : Truncate($"Device Widget · {GetDeviceSummary(devices)}");
     }
 
     public void ShowInfo(string title, string message, int timeout = 1600) =>

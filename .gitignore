@@ -20,6 +20,7 @@ widget.log
 
 # Locally extracted tools and packages
 tools/*
+!tools/build_release.ps1
 !tools/CompanionHostSmoke/
 !tools/CompanionHostSmoke/**
 tools/CompanionHostSmoke/bin/
@@ -49,3 +50,14 @@ Desktop.ini
 *.bak
 *.swp
 *~
+
+# Signing material and local credentials
+*.jks
+*.keystore
+*.pfx
+*.p12
+*.pem
+*.key
+*.cer
+*.crt
+*.dpapi

@@ -11,7 +11,7 @@ public sealed class RecordingStorage
     public RecordingStorage(ISettingsService settings) => _settings = settings;
 
     public string Folder => ResolveFolder(_settings.Current.RecordingFolder,
-        Environment.SpecialFolder.MyVideos, "Android Widget");
+        Environment.SpecialFolder.MyVideos, "Device Widget");
 
     public string CreateFilePath(AndroidDevice device)
     {

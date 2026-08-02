@@ -217,7 +217,7 @@ public partial class DeviceMiniWindow : Window
         CompanionMenuItem.IsEnabled = enabled && (installed || _companion.IsInstallerAvailable);
         CompanionMenuItem.ToolTip = installed
             ? _device.IsCompanionConnected
-                ? "Открыть Android Widget Companion"
+                ? "Открыть Device Widget Companion"
                 : "Создать код и ссылку сопряжения"
             : _companion.IsInstallerAvailable
                 ? "Установить компаньон после подтверждения"
@@ -443,7 +443,7 @@ public partial class DeviceMiniWindow : Window
             return;
         }
         var consent = MessageBox.Show(this,
-            $"Установить Android Widget Companion на «{_device.DisplayName}»?\n\n" +
+            $"Установить Device Widget Companion на «{_device.DisplayName}»?\n\n" +
             "Без вашего подтверждения установка не выполняется. Доступ к уведомлениям выдаётся " +
             "отдельно в настройках телефона.",
             "Установка компаньона", MessageBoxButton.YesNo, MessageBoxImage.Question,
