@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net6.0-windows</TargetFramework>
+    <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>disable</ImplicitUsings>
@@ -13,10 +13,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="vendor\scrcpy-win64-v4.0.zip"
-                      LogicalName="AndroidWidget.Bundled.scrcpy-win64-v4.0.zip" />
-    <EmbeddedResource Include="vendor\scrcpy-LICENSE.txt"
-                      LogicalName="AndroidWidget.Bundled.scrcpy-LICENSE.txt" />
+    <Compile Remove="src\**\*.cs" />
+    <Compile Remove="tools\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="src\AndroidWidget.Core\AndroidWidget.Core.csproj" />
+    <ProjectReference Include="src\AndroidWidget.Infrastructure\AndroidWidget.Infrastructure.csproj" />
+    <ProjectReference Include="src\AndroidWidget.CompanionHost\AndroidWidget.CompanionHost.csproj" />
   </ItemGroup>
 
 </Project>

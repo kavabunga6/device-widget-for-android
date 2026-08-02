@@ -1,12 +1,16 @@
 <Window x:Class="AndroidWidget.DeviceMiniWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Width="152" Height="112" MinWidth="152" MinHeight="112"
+        Width="120" Height="188" MinWidth="90" MinHeight="141" MaxWidth="260" MaxHeight="408"
+        Icon="{StaticResource AppIconImage}"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True">
-    <Border x:Name="Card" Margin="3" CornerRadius="20"
-            Background="{DynamicResource WindowSurface}"
-            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1.2"
+    <Grid>
+        <Viewbox Stretch="Uniform" StretchDirection="Both">
+            <Grid Width="120" Height="188">
+        <Border x:Name="Card" Margin="3" CornerRadius="29"
+            Background="{DynamicResource PhoneShellBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="3"
             Cursor="Hand" AllowDrop="True"
             DragEnter="Card_DragEnter" DragLeave="Card_DragLeave" Drop="Card_Drop"
             PreviewMouseLeftButtonDown="Card_MouseLeftButtonDown"
@@ -20,18 +24,28 @@
                     <Style TargetType="MenuItem">
                         <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
                         <Setter Property="Background" Value="Transparent" />
-                        <Setter Property="FontFamily" Value="Segoe UI" />
-                        <Setter Property="FontSize" Value="12" />
-                        <Setter Property="Padding" Value="12,8" />
-                        <Setter Property="Margin" Value="0,1" />
-                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        <Setter Property="BorderBrush" Value="#596273" />
+                        <Setter Property="Width" Value="88" />
+                        <Setter Property="Height" Value="86" />
+                        <Setter Property="Padding" Value="3" />
+                        <Setter Property="Margin" Value="2" />
+                        <Setter Property="HorizontalContentAlignment" Value="Center" />
                         <Setter Property="Template">
                             <Setter.Value>
                                 <ControlTemplate TargetType="MenuItem">
                                     <Border x:Name="ItemBorder" Background="{TemplateBinding Background}"
-                                            CornerRadius="8" Padding="{TemplateBinding Padding}">
-                                        <ContentPresenter ContentSource="Header" RecognizesAccessKey="True"
-                                                          VerticalAlignment="Center" />
+                                            CornerRadius="12" Padding="{TemplateBinding Padding}">
+                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <Border Width="46" Height="46" CornerRadius="13"
+                                                    Background="{TemplateBinding BorderBrush}">
+                                                <TextBlock Text="{TemplateBinding Tag}" FontFamily="Segoe Fluent Icons"
+                                                           FontSize="21" Foreground="White"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <TextBlock Text="{TemplateBinding Header}" Margin="0,5,0,0"
+                                                       FontFamily="Segoe UI" FontSize="10.5" TextAlignment="Center"
+                                                       Foreground="{TemplateBinding Foreground}" />
+                                        </StackPanel>
                                     </Border>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsHighlighted" Value="True">
@@ -46,110 +60,118 @@
                             </Setter.Value>
                         </Setter>
                     </Style>
-                    <Style TargetType="Separator">
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="Separator">
-                                    <Border Height="1" Margin="7,5" Background="{DynamicResource BorderBrush}" />
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                    </Style>
                 </ContextMenu.Resources>
                 <ContextMenu.Template>
                     <ControlTemplate TargetType="ContextMenu">
                         <Border Background="{DynamicResource WindowSurface}"
                                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
-                                CornerRadius="13" Padding="6" MinWidth="210">
-                            <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
+                                CornerRadius="18" Padding="8" Width="290">
+                            <UniformGrid IsItemsHost="True" Columns="3"
+                                         KeyboardNavigation.DirectionalNavigation="Cycle" />
                         </Border>
                     </ControlTemplate>
                 </ContextMenu.Template>
 
-                <MenuItem Header="Открыть карточку" FontWeight="SemiBold" Click="ExpandMenuItem_Click" />
-                <Separator />
-                <MenuItem x:Name="ScreenMenuItem" Header="Трансляция экрана" Click="ScreenMenuItem_Click" />
-                <MenuItem x:Name="FilesMenuItem" Header="Файлы и фотографии" Click="FilesMenuItem_Click" />
-                <MenuItem x:Name="ScreenshotMenuItem" Header="Сделать скриншот…" Click="ScreenshotMenuItem_Click" />
-                <MenuItem x:Name="InstallMenuItem" Header="Установить APK…" Click="InstallMenuItem_Click" />
-                <MenuItem x:Name="PowerMenuItem" Header="Включить или выключить экран" Click="PowerMenuItem_Click" />
-                <Separator />
-                <MenuItem Header="Настройки" Click="SettingsMenuItem_Click" />
+                <MenuItem x:Name="ScreenMenuItem" Header="Экран" Tag="&#xE7F4;" BorderBrush="#7559E8"
+                          Click="ScreenMenuItem_Click" ToolTip="Трансляция через scrcpy" />
+                <MenuItem x:Name="FilesMenuItem" Header="Файлы" Tag="&#xE8B7;" BorderBrush="#E59A27"
+                          Click="FilesMenuItem_Click" ToolTip="Файлы и фотографии" />
+                <MenuItem x:Name="ScreenshotMenuItem" Header="Скриншот" Tag="&#xE722;" BorderBrush="#DD4F78"
+                          Click="ScreenshotMenuItem_Click" ToolTip="Сделать снимок экрана" />
+                <MenuItem x:Name="InstallMenuItem" Header="APK" Tag="&#xE7B8;" BorderBrush="#30A66B"
+                          Click="InstallMenuItem_Click" ToolTip="Установить APK" />
+                <MenuItem x:Name="ShellMenuItem" Header="Shell" Tag="&#xE756;" BorderBrush="#394252"
+                          Click="ShellMenuItem_Click" ToolTip="Открыть ADB shell" />
+                <MenuItem x:Name="ClipboardMenuItem" Header="Буфер" Tag="&#xE77F;" BorderBrush="#148E9E"
+                          Click="ClipboardMenuItem_Click" ToolTip="Отправить текст" />
+                <MenuItem x:Name="PowerMenuItem" Header="Питание" Tag="&#xE7E8;" BorderBrush="#D54B43"
+                          Click="PowerMenuItem_Click" ToolTip="Включить или выключить экран" />
+                <MenuItem Header="MTP" Tag="&#xE7F1;" BorderBrush="#5070A8"
+                          Click="MtpMenuItem_Click" ToolTip="Открыть в Проводнике" />
+                <MenuItem x:Name="CompanionMenuItem" Header="Компаньон" Tag="&#xE8EA;" BorderBrush="#6157A8"
+                          Click="CompanionMenuItem_Click" ToolTip="Установить Android Widget Companion" />
+                <MenuItem Header="Настройки" Tag="&#xE713;" BorderBrush="#596273"
+                          Click="SettingsMenuItem_Click" />
             </ContextMenu>
         </Border.ContextMenu>
-        <Grid Margin="11">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="48" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
+        <Grid Margin="7">
+            <Border x:Name="MiniPhoneScreen" CornerRadius="22"
+                    Background="{DynamicResource ScreenBackground}"
+                    BorderBrush="Transparent" BorderThickness="0">
+                <Grid>
+                    <Border x:Name="MiniInactiveScreenSurface" Visibility="Collapsed" CornerRadius="21"
+                            Background="#202126" IsHitTestVisible="False" />
 
-            <Border x:Name="MiniPhoneBody" Width="42" Height="72" CornerRadius="12" HorizontalAlignment="Left"
-                    Background="{DynamicResource PhoneShellBrush}"
-                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
-                <Grid Margin="4">
-                    <Border x:Name="MiniPhoneScreen" CornerRadius="8" Background="{DynamicResource ScreenBackground}"
-                            BorderBrush="{DynamicResource ScreenBorderBrush}" BorderThickness="1">
-                        <Grid>
-                            <Border x:Name="MiniCameraCutout" Width="4" Height="4" CornerRadius="2"
-                                    Background="#080A0E" HorizontalAlignment="Center" VerticalAlignment="Top"
-                                    Margin="0,3,0,0" Panel.ZIndex="4" IsHitTestVisible="False" />
-                            <Grid Width="20" Height="30" VerticalAlignment="Center">
-                                <Rectangle x:Name="MiniSkinFrame" Width="18" Height="28" RadiusX="5" RadiusY="5"
-                                           Fill="#242B49" Stroke="#806AF4" StrokeThickness="1.2" />
-                                <Rectangle Width="11" Height="17" RadiusX="2" RadiusY="2"
-                                           Fill="#111729" VerticalAlignment="Top" Margin="0,5,0,0" />
-                                <Border x:Name="MiniSkinHomeBar" Width="6" Height="2" CornerRadius="1" Background="#806AF4"
-                                        VerticalAlignment="Bottom" Margin="0,0,0,3" />
-                            </Grid>
-                            <Grid x:Name="PowerIcon" Width="27" Height="27" Visibility="Collapsed"
-                                  HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <Ellipse Width="21" Height="21" Stroke="#F04444" StrokeThickness="3"
+                    <Grid Margin="10,13,10,12">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="38" />
+                            <RowDefinition Height="30" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="30" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock x:Name="DeviceNameText" Text="Android" FontSize="11.5"
+                                   FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"
+                                   TextAlignment="Center" TextWrapping="Wrap"
+                                   TextTrimming="CharacterEllipsis" MaxHeight="34" />
+                        <TextBlock x:Name="ConnectionText" Grid.Row="1" Text="USB / ADB"
+                                   FontSize="9" Foreground="{DynamicResource TextSecondary}"
+                                   TextAlignment="Center" TextWrapping="Wrap" />
+
+                        <Grid Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock x:Name="BatteryContent" Text="—" FontSize="22" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextPrimary}" TextAlignment="Center" />
+
+                            <Grid x:Name="PowerIcon" Width="34" Height="34" Visibility="Collapsed">
+                                <Ellipse Width="27" Height="27" Stroke="{DynamicResource DangerText}" StrokeThickness="3.5"
                                          VerticalAlignment="Bottom" />
-                                <Border Width="4" Height="13" CornerRadius="2" Background="#F04444"
+                                <Border Width="5" Height="16" CornerRadius="2.5" Background="{DynamicResource DangerText}"
                                         VerticalAlignment="Top" />
-                                <Border Width="8" Height="6" Background="{DynamicResource ScreenBackground}"
-                                        VerticalAlignment="Top" Margin="0,8,0,0" />
+                                <Border Width="10" Height="7" Background="#202126"
+                                        VerticalAlignment="Top" Margin="0,10,0,0" />
                             </Grid>
-                            <Viewbox x:Name="LockIcon" Width="29" Height="29" Visibility="Collapsed"
-                                     HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Viewbox x:Name="LockIcon" Width="35" Height="35" Visibility="Collapsed">
                                 <Canvas Width="64" Height="64">
                                     <Path Data="M 17,30 L 17,22 C 17,8 47,8 47,22 L 47,30"
-                                          Stroke="#F04444" StrokeThickness="6"
+                                          Stroke="{DynamicResource DangerText}" StrokeThickness="6"
                                           StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
                                     <Border Canvas.Left="7" Canvas.Top="27" Width="50" Height="34"
                                             CornerRadius="7" Background="Transparent"
-                                            BorderBrush="#F04444" BorderThickness="5" />
+                                            BorderBrush="{DynamicResource DangerText}" BorderThickness="5" />
                                     <Ellipse Canvas.Left="28" Canvas.Top="39" Width="8" Height="8"
-                                             Fill="#F04444" />
+                                             Fill="{DynamicResource DangerText}" />
                                     <Rectangle Canvas.Left="30" Canvas.Top="44" Width="4" Height="8"
-                                               RadiusX="2" RadiusY="2" Fill="#F04444" />
+                                               RadiusX="2" RadiusY="2" Fill="{DynamicResource DangerText}" />
                                 </Canvas>
                             </Viewbox>
-                            <Border x:Name="AuthorizationIcon" Width="29" Height="29" CornerRadius="15"
+                            <Border x:Name="AuthorizationIcon" Width="35" Height="35" CornerRadius="18"
                                     Visibility="Collapsed" Background="#E62A1D08"
-                                    BorderBrush="#FFB84D" BorderThickness="1.5"
-                                    HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <TextBlock Text="!" Foreground="#FFB84D" FontSize="21" FontWeight="Bold"
-                                           TextAlignment="Center" VerticalAlignment="Center" />
+                                    BorderBrush="{DynamicResource WarningText}" BorderThickness="2">
+                                <TextBlock Text="!" Foreground="{DynamicResource WarningText}" FontSize="24"
+                                           FontWeight="Bold" TextAlignment="Center" VerticalAlignment="Center" />
                             </Border>
-                            <Ellipse x:Name="StatusDot" Width="8" Height="8" Fill="#69738E"
-                                     Stroke="{DynamicResource WindowSurface}" StrokeThickness="1.5"
-                                     HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,3,3" />
+                            <TextBlock x:Name="UnavailableStateText" Text="OFFLINE" Visibility="Collapsed"
+                                       FontSize="11" FontWeight="Bold" Foreground="{DynamicResource DangerText}"
+                                       TextAlignment="Center" VerticalAlignment="Center" />
                         </Grid>
-                    </Border>
+
+                        <TextBlock x:Name="DetailText" Grid.Row="3" Text="Готов к работе"
+                                   FontSize="9" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextSecondary}"
+                                   TextAlignment="Center" TextWrapping="Wrap" MaxHeight="28"
+                                   VerticalAlignment="Center" />
+                    </Grid>
+
+                    <Ellipse x:Name="StatusDot" Width="10" Height="10" Fill="#69738E"
+                             Stroke="#202126" StrokeThickness="2"
+                             HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8" />
+                    <Border x:Name="MiniSkinHomeBar" Width="20" Height="3" CornerRadius="2"
+                            Background="#806AF4" HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                            Margin="0,0,0,5" />
                 </Grid>
             </Border>
 
-            <StackPanel Grid.Column="1" Margin="9,5,0,0">
-                <TextBlock x:Name="DeviceNameText" Text="Android" FontSize="12" FontWeight="SemiBold"
-                           Foreground="{DynamicResource TextPrimary}" TextTrimming="CharacterEllipsis" />
-                <TextBlock x:Name="ConnectionText" Text="USB / ADB" Margin="0,3,0,0" FontSize="9.5"
-                           Foreground="{DynamicResource TextSecondary}" TextTrimming="CharacterEllipsis" />
-                <TextBlock x:Name="DetailText" Text="Нажмите, чтобы открыть" Margin="0,8,0,0" FontSize="8.5"
-                           Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" MaxHeight="28" />
-            </StackPanel>
-
-            <Border x:Name="DropOverlay" Grid.ColumnSpan="2" Visibility="Collapsed" CornerRadius="15"
+            <Border x:Name="DropOverlay" Visibility="Collapsed" CornerRadius="21"
                     Background="#EB5E4BE0" BorderBrush="#927CFF" BorderThickness="2">
                 <StackPanel VerticalAlignment="Center">
                     <TextBlock Text="↓" Foreground="White" FontSize="30" TextAlignment="Center" />
@@ -158,5 +180,93 @@
                 </StackPanel>
             </Border>
         </Grid>
-    </Border>
+        </Border>
+            </Grid>
+        </Viewbox>
+
+        <Popup x:Name="OperationBubblePopup" PlacementTarget="{Binding ElementName=Card}"
+               Placement="Left" HorizontalOffset="-7" AllowsTransparency="True"
+               PopupAnimation="Fade" StaysOpen="True">
+            <Grid Width="282" Margin="8">
+                <Border x:Name="OperationBubbleBorder" Margin="0,0,9,0" Padding="14,12" CornerRadius="16"
+                        Background="{DynamicResource SurfaceBrush}"
+                        BorderBrush="{DynamicResource Accent}" BorderThickness="1.4"
+                        Cursor="Hand" MouseLeftButtonUp="OperationBubble_MouseLeftButtonUp">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="34" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border x:Name="OperationBubbleIconBackground" Width="28" Height="28" CornerRadius="14"
+                                VerticalAlignment="Top" Background="{DynamicResource Accent}">
+                            <TextBlock x:Name="OperationBubbleIcon" Text="&#xE898;"
+                                       FontFamily="Segoe Fluent Icons" FontSize="14" Foreground="White"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                            <TextBlock x:Name="OperationBubbleTitleText" Text="Передача файла"
+                                       FontSize="11.5" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextPrimary}"
+                                       TextTrimming="CharacterEllipsis" />
+                            <TextBlock x:Name="OperationBubbleMessageText" Margin="0,4,0,0"
+                                       FontSize="10.5" Foreground="{DynamicResource TextSecondary}"
+                                       TextWrapping="Wrap" MaxHeight="48" TextTrimming="CharacterEllipsis" />
+                            <ProgressBar x:Name="OperationProgressBar" Margin="0,9,0,1" Height="4"
+                                         IsIndeterminate="True" Foreground="{DynamicResource Accent}"
+                                         Background="{DynamicResource MutedSurfaceBrush}" />
+                            <TextBlock x:Name="OperationBubbleHintText" Margin="0,6,0,0" FontSize="9.5"
+                                       Foreground="{DynamicResource Accent}" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+                <Path x:Name="OperationBubbleTail" Data="M 0,0 L 10,8 L 0,16 Z" Width="10" Height="16"
+                      Fill="{DynamicResource SurfaceBrush}" Stretch="Fill"
+                      HorizontalAlignment="Right" VerticalAlignment="Center" />
+            </Grid>
+        </Popup>
+
+        <Popup x:Name="SmsBubblePopup" PlacementTarget="{Binding ElementName=Card}"
+               Placement="Left" HorizontalOffset="-7" AllowsTransparency="True"
+               PopupAnimation="Fade" StaysOpen="True">
+            <ItemsControl x:Name="SmsBubbleItems" Width="262" Margin="8">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Margin="0,0,0,7">
+                            <Border Margin="0,0,9,0" Padding="14,12" CornerRadius="16"
+                                    Background="{DynamicResource SurfaceBrush}"
+                                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                                    Cursor="Hand" MouseLeftButtonUp="SmsBubble_MouseLeftButtonUp">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="32" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Width="26" Height="26" CornerRadius="13" VerticalAlignment="Top"
+                                            Background="{DynamicResource Accent}">
+                                        <Path Data="M 6,7 L 20,7 L 20,17 L 13,17 L 9,21 L 9,17 L 6,17 Z"
+                                              Fill="White" Stretch="Uniform" Margin="6" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="7,0,0,0">
+                                        <TextBlock Text="{Binding Message.Sender}" FontSize="11.5"
+                                                   FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Message.Preview}" Margin="0,4,0,0" FontSize="10.5"
+                                                   Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"
+                                                   MaxHeight="48" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="Нажмите, чтобы скрыть" Margin="0,7,0,0" FontSize="9.5"
+                                                   Foreground="{DynamicResource Accent}" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                            <Path Data="M 0,0 L 10,8 L 0,16 Z" Width="10" Height="16"
+                                  Fill="{DynamicResource SurfaceBrush}" Stretch="Fill"
+                                  HorizontalAlignment="Right" VerticalAlignment="Center" />
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Popup>
+        <Thumb Style="{StaticResource CornerResizeThumb}" Panel.ZIndex="50"
+               DragDelta="ResizeGrip_DragDelta" />
+    </Grid>
 </Window>

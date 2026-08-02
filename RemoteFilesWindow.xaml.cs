@@ -1,25 +1,25 @@
-using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using AndroidWidget.Models;
-using AndroidWidget.Services;
+using AndroidWidget.Presentation.Files;
 
 namespace AndroidWidget;
 
 public partial class RemoteFilesWindow : Window
 {
-    private readonly AdbService _adb;
+    private readonly IAndroidDeviceService _devices;
+    private readonly IDesktopIntegration _desktop;
     private readonly AndroidDevice _device;
     private readonly CancellationTokenSource _lifetime = new();
     private string _currentPath = "/sdcard";
     private bool _busy;
 
-    public RemoteFilesWindow(AdbService adb, AndroidDevice device)
+    public RemoteFilesWindow(IAndroidDeviceService devices, IDesktopIntegration desktop, AndroidDevice device)
     {
         InitializeComponent();
-        _adb = adb;
+        _devices = devices;
+        _desktop = desktop;
         _device = device;
         DeviceText.Text = $"{device.DisplayName}  ·  {device.ConnectionLabel}";
         Closed += (_, _) => _lifetime.Cancel();
@@ -47,10 +47,10 @@ public partial class RemoteFilesWindow : Window
         SetStatus("Читаю папку…");
         try
         {
-            var entries = await _adb.ListDirectoryAsync(_device.Serial, path, _lifetime.Token);
+            var entries = await _devices.ListDirectoryAsync(_device.Serial, path, _lifetime.Token);
             _currentPath = path;
             PathText.Text = path;
-            FilesList.ItemsSource = entries;
+            FilesList.ItemsSource = entries.Select(entry => new RemoteEntryViewModel(entry)).ToList();
             EmptyState.Visibility = entries.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             SetStatus($"Объектов: {entries.Count}");
         }
@@ -67,21 +67,21 @@ public partial class RemoteFilesWindow : Window
 
     private async void FilesList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (FilesList.SelectedItem is RemoteEntry entry)
-            await OpenEntryAsync(entry);
+        if (FilesList.SelectedItem is RemoteEntryViewModel item)
+            await OpenEntryAsync(item.Entry);
     }
 
     private void FilesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        var selected = FilesList.SelectedItem is RemoteEntry;
+        var selected = FilesList.SelectedItem is RemoteEntryViewModel;
         OpenButton.IsEnabled = selected;
         DownloadButton.IsEnabled = selected;
     }
 
     private async void OpenButton_Click(object sender, RoutedEventArgs e)
     {
-        if (FilesList.SelectedItem is RemoteEntry entry)
-            await OpenEntryAsync(entry);
+        if (FilesList.SelectedItem is RemoteEntryViewModel item)
+            await OpenEntryAsync(item.Entry);
     }
 
     private async Task OpenEntryAsync(RemoteEntry entry)
@@ -102,10 +102,12 @@ public partial class RemoteFilesWindow : Window
             var cacheFolder = Path.Combine(Path.GetTempPath(), "AndroidWidget", safeSerial);
             Directory.CreateDirectory(cacheFolder);
             var localPath = Path.Combine(cacheFolder, entry.DisplayName);
-            var result = await _adb.PullFileAsync(_device.Serial, entry.FullPath, localPath, _lifetime.Token);
+            var result = await _devices.PullFileAsync(_device.Serial, entry.FullPath, localPath, _lifetime.Token);
             if (!result.IsSuccess)
                 throw new InvalidOperationException(result.BestMessage);
-            Process.Start(new ProcessStartInfo(localPath) { UseShellExecute = true });
+            var open = _desktop.OpenFile(localPath);
+            if (!open.IsSuccess)
+                throw new InvalidOperationException(open.BestMessage);
             SetStatus("Файл открыт из временной копии ✓");
         }
         catch (OperationCanceledException) { }
@@ -115,8 +117,9 @@ public partial class RemoteFilesWindow : Window
 
     private async void DownloadButton_Click(object sender, RoutedEventArgs e)
     {
-        if (FilesList.SelectedItem is not RemoteEntry entry || _busy)
+        if (FilesList.SelectedItem is not RemoteEntryViewModel item || _busy)
             return;
+        var entry = item.Entry;
 
         _busy = true;
         SetStatus($"Скачиваю {entry.DisplayName}…");
@@ -126,10 +129,12 @@ public partial class RemoteFilesWindow : Window
                 "Downloads", "Android Widget");
             Directory.CreateDirectory(downloads);
             var localPath = GetUniquePath(Path.Combine(downloads, entry.DisplayName));
-            var result = await _adb.PullFileAsync(_device.Serial, entry.FullPath, localPath, _lifetime.Token);
+            var result = await _devices.PullFileAsync(_device.Serial, entry.FullPath, localPath, _lifetime.Token);
             if (!result.IsSuccess)
                 throw new InvalidOperationException(result.BestMessage);
-            Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{localPath}\"") { UseShellExecute = true });
+            var reveal = _desktop.RevealFile(localPath);
+            if (!reveal.IsSuccess)
+                throw new InvalidOperationException(reveal.BestMessage);
             SetStatus($"Сохранено: {localPath} ✓");
         }
         catch (OperationCanceledException) { }
@@ -140,9 +145,9 @@ public partial class RemoteFilesWindow : Window
     private void SetStatus(string message, bool error = false)
     {
         StatusText.Text = message;
-        StatusText.Foreground = new SolidColorBrush(error
-            ? Color.FromRgb(255, 126, 126)
-            : Color.FromRgb(126, 138, 168));
+        StatusText.Foreground = error
+            ? (Brush)FindResource("DangerText")
+            : (Brush)FindResource("TextSecondary");
     }
 
     private static string GetUniquePath(string path)

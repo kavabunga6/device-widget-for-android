@@ -19,10 +19,21 @@ widget.log
 *.log
 
 # Locally extracted tools and packages
-tools/
+tools/*
+!tools/CompanionHostSmoke/
+!tools/CompanionHostSmoke/**
+tools/CompanionHostSmoke/bin/
+tools/CompanionHostSmoke/obj/
+.tools/
 publish/
 *.nupkg
 *.snupkg
+
+# Android/Gradle build state
+companion-android/.gradle/
+companion-android/.kotlin/
+companion-android/**/build/
+companion-android/local.properties
 
 # OS-generated files
 .DS_Store

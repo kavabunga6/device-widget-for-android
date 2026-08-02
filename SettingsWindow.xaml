@@ -1,7 +1,8 @@
 <Window x:Class="AndroidWidget.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Настройки Android Widget" Width="440" Height="388"
+        Title="Настройки Android Widget" Width="440" Height="610"
+        Icon="{StaticResource AppIconImage}"
         ResizeMode="NoResize" WindowStartupLocation="CenterScreen"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent">
     <Window.Resources>
@@ -93,6 +94,8 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
@@ -152,10 +155,98 @@
                     </Grid>
                 </Border>
 
-                <TextBlock x:Name="StatusText" Grid.Row="3" Margin="2,12,2,0"
+                <Border Grid.Row="3" Margin="0,12,0,0" Padding="14" CornerRadius="13"
+                        Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="1">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Показывать уведомления у карточки" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextPrimary}" />
+                            <TextBlock Text="Компаньон передаёт разрешённые Android-уведомления только локально"
+                                       FontSize="10" Foreground="{DynamicResource TextSecondary}"
+                                       Margin="0,3,12,0" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <ToggleButton x:Name="SmsBubblesToggle" Grid.Column="1" VerticalAlignment="Center"
+                                      Style="{StaticResource SwitchStyle}" Click="SmsBubblesToggle_Click" />
+
+                        <Grid Grid.Row="1" Grid.ColumnSpan="2" Margin="0,13,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Время показа" Margin="0,0,14,0" VerticalAlignment="Center"
+                                       FontSize="10.5" Foreground="{DynamicResource TextSecondary}" />
+                            <Border Grid.Column="1" Padding="3" CornerRadius="9"
+                                    Background="{DynamicResource MutedSurfaceBrush}"
+                                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                                <UniformGrid Columns="5">
+                                    <RadioButton x:Name="Duration5Radio" Content="5 с" GroupName="Duration"
+                                                 Style="{StaticResource ThemeChoiceStyle}"
+                                                 Checked="NotificationDuration_Checked" />
+                                    <RadioButton x:Name="Duration10Radio" Content="10 с" GroupName="Duration"
+                                                 Style="{StaticResource ThemeChoiceStyle}"
+                                                 Checked="NotificationDuration_Checked" />
+                                    <RadioButton x:Name="Duration15Radio" Content="15 с" GroupName="Duration"
+                                                 Style="{StaticResource ThemeChoiceStyle}"
+                                                 Checked="NotificationDuration_Checked" />
+                                    <RadioButton x:Name="Duration30Radio" Content="30 с" GroupName="Duration"
+                                                 Style="{StaticResource ThemeChoiceStyle}"
+                                                 Checked="NotificationDuration_Checked" />
+                                    <RadioButton x:Name="Duration60Radio" Content="60 с" GroupName="Duration"
+                                                 Style="{StaticResource ThemeChoiceStyle}"
+                                                 Checked="NotificationDuration_Checked" />
+                                </UniformGrid>
+                            </Border>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Row="4" Margin="0,12,0,0" Padding="14" CornerRadius="13"
+                        Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="1">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Папка для скриншотов" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextPrimary}" />
+                            <TextBlock Text="Снимки сохраняются автоматически с именем телефона и датой"
+                                       FontSize="10" Foreground="{DynamicResource TextSecondary}"
+                                       Margin="0,3,0,0" />
+                        </StackPanel>
+                        <Grid Grid.Row="1" Margin="0,9,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Border Padding="10,8" CornerRadius="9"
+                                    Background="{DynamicResource MutedSurfaceBrush}"
+                                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                                <TextBlock x:Name="ScreenshotFolderText" FontSize="10.5"
+                                           Foreground="{DynamicResource TextSecondary}"
+                                           TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
+                            </Border>
+                            <Button Grid.Column="1" Content="Выбрать" Width="86" Height="34"
+                                    Margin="8,0,0,0" Padding="0" Style="{StaticResource ActionButton}"
+                                    HorizontalContentAlignment="Center" Click="ScreenshotFolderButton_Click" />
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <TextBlock x:Name="StatusText" Grid.Row="5" Margin="2,12,2,0"
                            Foreground="{DynamicResource TextSecondary}" FontSize="10.5" TextWrapping="Wrap" />
 
-                <Button Grid.Row="4" Content="Готово" Width="104" Height="38" HorizontalAlignment="Right"
+                <Button Grid.Row="6" Content="Готово" Width="104" Height="38" HorizontalAlignment="Right"
                         Style="{StaticResource ActionButton}" Margin="0" Click="CloseButton_Click" />
             </Grid>
         </Grid>

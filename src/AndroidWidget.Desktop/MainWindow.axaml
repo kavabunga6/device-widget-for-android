@@ -1,0 +1,123 @@
+<Window x:Class="AndroidWidget.Desktop.MainWindow"
+        xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Android Widget" Width="720" Height="610" MinWidth="620" MinHeight="520"
+        Background="#202124" WindowStartupLocation="CenterScreen">
+  <Window.Resources>
+    <SolidColorBrush x:Key="Surface" Color="#2B2D31" />
+    <SolidColorBrush x:Key="Border" Color="#454850" />
+    <SolidColorBrush x:Key="Primary" Color="#F7F7F8" />
+    <SolidColorBrush x:Key="Secondary" Color="#C5C7CE" />
+    <SolidColorBrush x:Key="Accent" Color="#8B7CFF" />
+  </Window.Resources>
+
+  <ScrollViewer>
+    <Grid Margin="28" RowDefinitions="Auto,Auto,Auto,*">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel>
+          <TextBlock Text="Android Widget" FontSize="27" FontWeight="SemiBold" Foreground="{StaticResource Primary}" />
+          <TextBlock Text="Companion desktop · Windows / macOS / Linux" Margin="0,4,0,0"
+                     Foreground="{StaticResource Secondary}" />
+        </StackPanel>
+        <Border Grid.Column="1" CornerRadius="14" Padding="12,7" Background="#263C34">
+          <TextBlock x:Name="HostStatusText" Text="Запуск…" Foreground="#74D8A4" />
+        </Border>
+      </Grid>
+
+      <Border Grid.Row="1" Margin="0,22,0,0" Padding="18" CornerRadius="18"
+              Background="{StaticResource Surface}" BorderBrush="{StaticResource Border}" BorderThickness="1">
+        <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
+          <StackPanel>
+            <TextBlock Text="Подключить Android-компаньон" FontSize="17" FontWeight="SemiBold"
+                       Foreground="{StaticResource Primary}" />
+            <TextBlock Text="Оба устройства должны быть в одной локальной сети"
+                       Margin="0,4,0,0" Foreground="{StaticResource Secondary}" />
+          </StackPanel>
+          <Button Grid.Column="1" Content="Новый код" Padding="18,9" Click="PairButton_Click" />
+
+          <Grid Grid.Row="1" Grid.ColumnSpan="2" Margin="0,16,0,0" ColumnDefinitions="Auto,*">
+            <Border Width="82" Height="62" CornerRadius="14" Background="#332D56">
+              <TextBlock x:Name="PairCodeText" Text="—— ——" FontSize="20" FontWeight="Bold"
+                         Foreground="{StaticResource Accent}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <TextBox x:Name="PairingUriText" Grid.Column="1" Margin="12,0,0,0" IsReadOnly="True"
+                     PlaceholderText="Создайте одноразовый код сопряжения" TextWrapping="Wrap" />
+          </Grid>
+
+          <Grid Grid.Row="2" Grid.ColumnSpan="2" Margin="0,12,0,0" ColumnDefinitions="*,Auto">
+            <TextBlock x:Name="PairingHintText" Text="Код действует пять минут и принимается только один раз"
+                       Foreground="{StaticResource Secondary}" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Content="Копировать ссылку" Click="CopyPairingButton_Click" />
+          </Grid>
+        </Grid>
+      </Border>
+
+      <Grid Grid.Row="2" Margin="0,22,0,0" ColumnDefinitions="*,*">
+        <TextBlock Text="Устройства" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource Primary}" />
+        <TextBlock Grid.Column="1" Text="Последние уведомления" FontSize="18" FontWeight="SemiBold"
+                   Foreground="{StaticResource Primary}" Margin="14,0,0,0" />
+      </Grid>
+
+      <Grid Grid.Row="3" Margin="0,10,0,0" ColumnDefinitions="*,*">
+        <Border Padding="10" CornerRadius="16" Background="{StaticResource Surface}"
+                BorderBrush="{StaticResource Border}" BorderThickness="1">
+          <Grid>
+            <TextBlock x:Name="NoDevicesText" Text="Пока нет подключённых устройств" HorizontalAlignment="Center"
+                       VerticalAlignment="Center" Foreground="{StaticResource Secondary}" />
+            <ListBox x:Name="DevicesList" Background="Transparent" BorderThickness="0">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <Border Margin="0,0,0,8" Padding="12" CornerRadius="12" Background="#24262A">
+                    <Grid ColumnDefinitions="Auto,*">
+                      <Border Width="38" Height="58" CornerRadius="10" Background="#15171B"
+                              BorderBrush="{StaticResource Accent}" BorderThickness="1.2">
+                        <TextBlock Text="●" Foreground="{Binding StatusColor}" HorizontalAlignment="Center"
+                                   VerticalAlignment="Bottom" Margin="0,0,0,7" />
+                      </Border>
+                      <StackPanel Grid.Column="1" Margin="12,2,0,0">
+                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{StaticResource Primary}" />
+                        <TextBlock Text="{Binding Detail}" Margin="0,4,0,0" FontSize="11"
+                                   Foreground="{StaticResource Secondary}" />
+                        <TextBlock Text="{Binding Battery}" Margin="0,5,0,0" FontSize="11"
+                                   Foreground="#74D8A4" />
+                        <Border Margin="0,9,0,0" Padding="10,7" CornerRadius="12,12,12,3"
+                                Background="#332D56" IsVisible="{Binding HasLatestMessage}">
+                          <TextBlock Text="{Binding LatestMessage}" FontSize="11" TextWrapping="Wrap"
+                                     MaxHeight="42" Foreground="#E8E4FF" />
+                        </Border>
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Grid>
+        </Border>
+
+        <Border Grid.Column="1" Margin="14,0,0,0" Padding="10" CornerRadius="16"
+                Background="{StaticResource Surface}" BorderBrush="{StaticResource Border}" BorderThickness="1">
+          <Grid>
+            <TextBlock x:Name="NoNotificationsText" Text="Уведомления появятся после выдачи доступа на телефоне"
+                       TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center"
+                       VerticalAlignment="Center" Foreground="{StaticResource Secondary}" />
+            <ListBox x:Name="NotificationsList" Background="Transparent" BorderThickness="0">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <Border Margin="0,0,0,8" Padding="12" CornerRadius="12" Background="#24262A">
+                    <StackPanel>
+                      <TextBlock Text="{Binding AppName}" FontSize="10.5" Foreground="{StaticResource Accent}" />
+                      <TextBlock Text="{Binding Title}" Margin="0,4,0,0" FontWeight="SemiBold"
+                                 Foreground="{StaticResource Primary}" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding Preview}" Margin="0,4,0,0" FontSize="11" MaxHeight="44"
+                                 Foreground="{StaticResource Secondary}" TextWrapping="Wrap" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Grid>
+        </Border>
+      </Grid>
+    </Grid>
+  </ScrollViewer>
+</Window>

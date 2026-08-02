@@ -2,20 +2,54 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Application.Resources>
-        <SolidColorBrush x:Key="TextPrimary" Color="#F5F7FF" />
-        <SolidColorBrush x:Key="TextSecondary" Color="#9AA6C1" />
-        <SolidColorBrush x:Key="Accent" Color="#7C5CFC" />
-        <SolidColorBrush x:Key="WindowSurface" Color="#0E1220" />
-        <SolidColorBrush x:Key="PhoneShellBrush" Color="#090C13" />
-        <SolidColorBrush x:Key="SurfaceBrush" Color="#171C2C" />
-        <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#222A42" />
-        <SolidColorBrush x:Key="BorderBrush" Color="#29314A" />
-        <SolidColorBrush x:Key="ScreenBorderBrush" Color="#202842" />
-        <SolidColorBrush x:Key="MutedSurfaceBrush" Color="#12182A" />
+        <DrawingImage x:Key="AppIconImage">
+            <DrawingImage.Drawing>
+                <DrawingGroup>
+                    <GeometryDrawing Brush="#242A3D">
+                        <GeometryDrawing.Pen>
+                            <Pen Brush="#806AF4" Thickness="1.6" />
+                        </GeometryDrawing.Pen>
+                        <GeometryDrawing.Geometry>
+                            <RectangleGeometry Rect="5,1,22,30" RadiusX="5" RadiusY="5" />
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                    <GeometryDrawing Brush="#111729">
+                        <GeometryDrawing.Pen>
+                            <Pen Brush="#5E74C9" Thickness="1" />
+                        </GeometryDrawing.Pen>
+                        <GeometryDrawing.Geometry>
+                            <RectangleGeometry Rect="8,5,16,20" RadiusX="2.5" RadiusY="2.5" />
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                    <GeometryDrawing Brush="#D9DCEC">
+                        <GeometryDrawing.Geometry>
+                            <EllipseGeometry Center="16,4" RadiusX="1.2" RadiusY="1.2" />
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                    <GeometryDrawing Brush="#74D8A4">
+                        <GeometryDrawing.Geometry>
+                            <EllipseGeometry Center="16,28" RadiusX="1.8" RadiusY="1.8" />
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                </DrawingGroup>
+            </DrawingImage.Drawing>
+        </DrawingImage>
+        <SolidColorBrush x:Key="TextPrimary" Color="#F7F7F8" />
+        <SolidColorBrush x:Key="TextSecondary" Color="#C5C7CE" />
+        <SolidColorBrush x:Key="DangerText" Color="#FF8585" />
+        <SolidColorBrush x:Key="WarningText" Color="#FFD18A" />
+        <SolidColorBrush x:Key="Accent" Color="#8B7CFF" />
+        <SolidColorBrush x:Key="WindowSurface" Color="#202124" />
+        <SolidColorBrush x:Key="PhoneShellBrush" Color="#151619" />
+        <SolidColorBrush x:Key="SurfaceBrush" Color="#2B2D31" />
+        <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#35383E" />
+        <SolidColorBrush x:Key="BorderBrush" Color="#454850" />
+        <SolidColorBrush x:Key="ScreenBorderBrush" Color="#4A4D56" />
+        <SolidColorBrush x:Key="MutedSurfaceBrush" Color="#27292D" />
         <LinearGradientBrush x:Key="ScreenBackground" StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Color="#151A2B" Offset="0" />
-            <GradientStop Color="#0E1220" Offset="0.5" />
-            <GradientStop Color="#12152A" Offset="1" />
+            <GradientStop Color="#2A2C31" Offset="0" />
+            <GradientStop Color="#222428" Offset="0.5" />
+            <GradientStop Color="#26282D" Offset="1" />
         </LinearGradientBrush>
 
         <Style x:Key="ActionButton" TargetType="Button">
@@ -62,6 +96,68 @@
             <Setter Property="Padding" Value="0" />
             <Setter Property="Margin" Value="0" />
             <Setter Property="HorizontalContentAlignment" Value="Center" />
+        </Style>
+
+        <Style x:Key="AppTileButton" TargetType="Button">
+            <Setter Property="Width" Value="64" />
+            <Setter Property="Height" Value="86" />
+            <Setter Property="Margin" Value="2" />
+            <Setter Property="Padding" Value="3" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="TileSurface" CornerRadius="13"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TileSurface" Property="Background"
+                                        Value="{DynamicResource SurfaceHoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="TileSurface" Property="Opacity" Value="0.72" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="TileSurface" Property="Opacity" Value="0.35" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="CornerResizeThumb" TargetType="Thumb">
+            <Setter Property="Width" Value="18" />
+            <Setter Property="Height" Value="18" />
+            <Setter Property="Cursor" Value="SizeNWSE" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+            <Setter Property="VerticalAlignment" Value="Bottom" />
+            <Setter Property="Opacity" Value="0.6" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Thumb">
+                        <Grid Background="Transparent">
+                            <Path Data="M 6,15 L 15,6 M 10,15 L 15,10 M 14,15 L 15,14"
+                                  Stroke="{DynamicResource TextSecondary}" StrokeThickness="1.4"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Opacity" Value="1" />
+                </Trigger>
+            </Style.Triggers>
         </Style>
     </Application.Resources>
 </Application>

@@ -1,18 +1,16 @@
-using System.Drawing;
-using System.Drawing.Drawing2D;
-using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Threading;
-using AndroidWidget.Models;
+using AndroidWidget.Composition;
+using AndroidWidget.Presentation.Tray;
 using AndroidWidget.Services;
 
 namespace AndroidWidget;
 
 public partial class App : System.Windows.Application
 {
+    private readonly AppServices _services = AppServices.Create();
     private Mutex? _singleInstanceMutex;
-    private System.Windows.Forms.NotifyIcon? _trayIcon;
-    private Icon? _ownedTrayIcon;
+    private TrayIconController? _tray;
     private MainWindow? _mainWindow;
     private SettingsWindow? _settingsWindow;
     private readonly Dictionary<string, DeviceMiniWindow> _miniWindows = new();
@@ -27,15 +25,38 @@ public partial class App : System.Windows.Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
-        AppLog.Write($"Startup begin, PID={Environment.ProcessId}");
+        // Initialize WPF before any early-return path. Headless diagnostics
+        // terminate explicitly because they never create a window/dispatcher
+        // lifetime in which a deferred Shutdown() could complete.
+        ShutdownMode = ShutdownMode.OnExplicitShutdown;
+        base.OnStartup(e);
+        _services.Logger.Write($"Startup begin, PID={Environment.ProcessId}");
 
         if (e.Args.Contains("--verify-scrcpy-bundle", StringComparer.OrdinalIgnoreCase))
         {
-            var bundledPath = AdbService.PrepareBundledScrcpy(out var bundleError);
-            AppLog.Write(bundledPath is null
-                ? $"Bundled scrcpy verification failed: {bundleError}"
-                : $"Bundled scrcpy verified: {bundledPath}");
-            Shutdown(bundledPath is null ? 1 : 0);
+            var valid = _services.Diagnostics.VerifyScrcpyBundle(out var details);
+            _services.Logger.Write(valid
+                ? $"Bundled scrcpy verified: {details}"
+                : $"Bundled scrcpy verification failed: {details}");
+            Environment.Exit(valid ? 0 : 1);
+            return;
+        }
+
+        if (e.Args.Contains("--verify-sms-parser", StringComparer.OrdinalIgnoreCase))
+        {
+            var valid = _services.Diagnostics.VerifySmsParser();
+            _services.Logger.Write(valid ? "SMS parser verified" : "SMS parser verification failed");
+            Environment.Exit(valid ? 0 : 1);
+            return;
+        }
+
+        if (e.Args.Contains("--verify-companion-bundle", StringComparer.OrdinalIgnoreCase))
+        {
+            var valid = _services.Diagnostics.VerifyCompanionBundle(out var details);
+            _services.Logger.Write(valid
+                ? $"Bundled companion verified: {details}"
+                : $"Bundled companion verification failed: {details}");
+            Environment.Exit(valid ? 0 : 1);
             return;
         }
 
@@ -49,25 +70,29 @@ public partial class App : System.Windows.Application
         }
 
         DispatcherUnhandledException += OnUnhandledException;
-        ShutdownMode = ShutdownMode.OnExplicitShutdown;
-        base.OnStartup(e);
 
-        ThemeService.Apply(SettingsService.Current.Theme);
-        InitializeTray();
+        ThemeService.Apply(_services.Settings.Current.Theme);
+        _tray = new TrayIconController(
+            () => Dispatcher.Invoke(() => ShowMainFor()),
+            () => Dispatcher.Invoke(EnterMiniMode),
+            () => Dispatcher.Invoke(ShowSettings),
+            () => Dispatcher.Invoke(ExitApplication));
 
-        _mainWindow = new MainWindow { Opacity = 0 };
+        _mainWindow = new MainWindow(_services.Devices, _services.Settings, _services.Desktop,
+            _services.Logger, _services.Screenshots, _services.Companion, _services.CompanionCoordinator)
+        { Opacity = 0 };
         _mainWindow.DevicesUpdated += HandleDevicesUpdated;
         _mainWindow.Show(); // Loads the background monitor.
         _mainWindow.Hide();
         _mainWindow.Opacity = 1;
-        AppLog.Write("Startup completed");
+        _services.Logger.Write("Startup completed");
     }
 
     public void EnterMiniMode()
     {
         _manuallyHidden = false;
         _expandedSerial = null;
-        SettingsService.Update(settings => settings with { IsMini = true });
+        _services.Settings.Update(settings => settings with { IsMini = true });
         _mainWindow?.Hide();
         SyncMiniWindows(_devices);
     }
@@ -81,7 +106,7 @@ public partial class App : System.Windows.Application
         }
 
         _manuallyHidden = false;
-        SettingsService.Update(settings => settings with { IsMini = false });
+        _services.Settings.Update(settings => settings with { IsMini = false });
         var selected = !string.IsNullOrWhiteSpace(serial) && _devices.Any(device => device.Serial == serial)
             ? serial
             : _expandedSerial is not null && _devices.Any(device => device.Serial == _expandedSerial)
@@ -99,8 +124,7 @@ public partial class App : System.Windows.Application
         _manuallyHidden = true;
         _mainWindow?.Hide();
         CloseMiniWindows();
-        _trayIcon?.ShowBalloonTip(1200, "Android Widget", "Виджет продолжает работать в трее.",
-            System.Windows.Forms.ToolTipIcon.Info);
+        _tray?.ShowInfo("Android Widget", "Виджет продолжает работать в трее.", 1200);
     }
 
     public void ShowSettings()
@@ -111,7 +135,7 @@ public partial class App : System.Windows.Application
             return;
         }
 
-        _settingsWindow = new SettingsWindow();
+        _settingsWindow = new SettingsWindow(_services.Settings, _services.Screenshots);
         _settingsWindow.Closed += (_, _) => _settingsWindow = null;
         _settingsWindow.Show();
         _settingsWindow.Activate();
@@ -123,27 +147,25 @@ public partial class App : System.Windows.Application
         CloseMiniWindows();
         _settingsWindow?.Close();
         _mainWindow?.Close();
-        _trayIcon?.Dispose();
-        _ownedTrayIcon?.Dispose();
+        _tray?.Dispose();
         Shutdown();
     }
 
     private void HandleDevicesUpdated(object? sender, IReadOnlyList<AndroidDevice> devices)
     {
         _devices = devices;
-        UpdateTray(devices);
+        _tray?.Update(devices);
 
         var unauthorizedNow = devices
             .Where(device => device.State == DeviceConnectionState.Unauthorized)
             .Select(device => device.Serial)
             .ToHashSet(StringComparer.Ordinal);
         var newlyUnauthorized = unauthorizedNow.Except(_unauthorizedSerials).ToList();
-        if (newlyUnauthorized.Count > 0 && _trayIcon is not null)
+        if (newlyUnauthorized.Count > 0)
         {
             var device = devices.First(item => item.Serial == newlyUnauthorized[0]);
-            _trayIcon.ShowBalloonTip(3000, "Требуется авторизация Android",
-                $"Разблокируйте {device.DisplayName} и подтвердите RSA-ключ для USB-отладки.",
-                System.Windows.Forms.ToolTipIcon.Warning);
+            _tray?.ShowWarning("Требуется авторизация Android",
+                $"Разблокируйте {device.DisplayName} и подтвердите RSA-ключ для USB-отладки.");
         }
         _unauthorizedSerials = unauthorizedNow;
 
@@ -160,18 +182,24 @@ public partial class App : System.Windows.Application
         }
         else
         {
-            var expandedStillConnected = _expandedSerial is not null &&
-                                         devices.Any(device => device.Serial == _expandedSerial);
-            if (!expandedStillConnected)
+            var expandedDeviceDisconnected = _expandedSerial is not null &&
+                                             devices.All(device => device.Serial != _expandedSerial);
+            if (expandedDeviceDisconnected)
+            {
+                // An expanded card belongs to one serial for its whole lifetime.
+                // Other devices keep their own mini cards and never replace it.
                 _expandedSerial = null;
-
-            if (_expandedSerial is not null)
+                _mainWindow?.Hide();
+                _services.Settings.Update(settings => settings with { IsMini = true });
+                SyncMiniWindows(devices);
+            }
+            else if (_expandedSerial is not null)
             {
                 _mainWindow?.SelectDevice(_expandedSerial);
                 _mainWindow?.Show();
                 SyncMiniWindows(devices.Where(device => device.Serial != _expandedSerial).ToList());
             }
-            else if (SettingsService.Current.IsMini || devices.Count > 1)
+            else if (_services.Settings.Current.IsMini || devices.Count > 1)
             {
                 // In multi-device mode every phone must have its own visible card.
                 _mainWindow?.Hide();
@@ -186,9 +214,8 @@ public partial class App : System.Windows.Application
             }
         }
 
-        if (_previousDeviceCount == 0 && devices.Count > 0 && _trayIcon is not null)
-            _trayIcon.ShowBalloonTip(1400, "Android подключён", DeviceSummary(devices),
-                System.Windows.Forms.ToolTipIcon.Info);
+        if (_previousDeviceCount == 0 && devices.Count > 0)
+            _tray?.ShowInfo("Android подключён", TrayIconController.GetDeviceSummary(devices), 1400);
         _previousDeviceCount = devices.Count;
     }
 
@@ -210,7 +237,8 @@ public partial class App : System.Windows.Application
                 continue;
             }
 
-            var mini = new DeviceMiniWindow(device);
+            var mini = new DeviceMiniWindow(device, _services.Devices, _services.Settings, _services.Desktop,
+                _services.Screenshots, _services.Companion, _services.CompanionCoordinator);
             mini.PlaceAt(index);
             _miniWindows.Add(device.Serial, mini);
             mini.Show();
@@ -224,77 +252,19 @@ public partial class App : System.Windows.Application
         _miniWindows.Clear();
     }
 
-    private void InitializeTray()
-    {
-        _ownedTrayIcon = CreatePhoneIcon();
-        var menu = new System.Windows.Forms.ContextMenuStrip();
-        menu.Items.Add("Открыть виджет", null, (_, _) => Dispatcher.Invoke(() => ShowMainFor()));
-        menu.Items.Add("Мини-виджеты", null, (_, _) => Dispatcher.Invoke(EnterMiniMode));
-        menu.Items.Add("Настройки", null, (_, _) => Dispatcher.Invoke(ShowSettings));
-        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
-        menu.Items.Add("Выход", null, (_, _) => Dispatcher.Invoke(ExitApplication));
-
-        _trayIcon = new System.Windows.Forms.NotifyIcon
-        {
-            Icon = _ownedTrayIcon,
-            Text = "Android Widget · устройств нет",
-            Visible = true,
-            ContextMenuStrip = menu
-        };
-        _trayIcon.DoubleClick += (_, _) => Dispatcher.Invoke(() => ShowMainFor());
-    }
-
-    private void UpdateTray(IReadOnlyList<AndroidDevice> devices)
-    {
-        if (_trayIcon is null)
-            return;
-        var unauthorized = devices.FirstOrDefault(device => device.State == DeviceConnectionState.Unauthorized);
-        _trayIcon.Icon = unauthorized is null ? _ownedTrayIcon : SystemIcons.Warning;
-        _trayIcon.Text = unauthorized is not null
-            ? TruncateTrayText($"Android Widget · авторизуйте {unauthorized.DisplayName}")
-            : devices.Count == 0
-                ? "Android Widget · устройств нет"
-                : TruncateTrayText($"Android Widget · {DeviceSummary(devices)}");
-    }
-
     private void ShowSettingsOrNoDeviceMessage()
     {
         if (_devices.Count == 0)
         {
-            _trayIcon?.ShowBalloonTip(1600, "Android Widget",
-                "Подключите телефон по USB или Wi-Fi ADB.", System.Windows.Forms.ToolTipIcon.Info);
+            _tray?.ShowInfo("Android Widget", "Подключите телефон по USB или Wi-Fi ADB.");
             return;
         }
         ShowSettings();
     }
 
-    private static string DeviceSummary(IReadOnlyList<AndroidDevice> devices) =>
-        devices.Count == 1 ? devices[0].DisplayName : $"устройств: {devices.Count}";
-
-    private static string TruncateTrayText(string value) => value.Length <= 63 ? value : value[..60] + "…";
-
-    private static Icon CreatePhoneIcon()
+    private void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
-        using var bitmap = new Bitmap(32, 32);
-        using var graphics = Graphics.FromImage(bitmap);
-        graphics.SmoothingMode = SmoothingMode.AntiAlias;
-        graphics.Clear(Color.Transparent);
-        using var body = new SolidBrush(Color.FromArgb(35, 40, 58));
-        using var screen = new SolidBrush(Color.FromArgb(124, 92, 252));
-        graphics.FillRoundedRectangle(body, new Rectangle(7, 2, 18, 28), 5);
-        graphics.FillRoundedRectangle(screen, new Rectangle(10, 6, 12, 18), 2);
-        graphics.FillEllipse(Brushes.White, 15, 26, 2, 2);
-        var handle = bitmap.GetHicon();
-        try { return (Icon)Icon.FromHandle(handle).Clone(); }
-        finally { DestroyIcon(handle); }
-    }
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern bool DestroyIcon(IntPtr handle);
-
-    private static void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
-    {
-        AppLog.Write($"Unhandled UI exception: {e.Exception}");
+        _services.Logger.Write($"Unhandled UI exception: {e.Exception}");
         System.Windows.MessageBox.Show(e.Exception.Message, "Android Widget",
             MessageBoxButton.OK, MessageBoxImage.Error);
         e.Handled = true;
@@ -302,29 +272,21 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
-        AppLog.Write($"Exit, code={e.ApplicationExitCode}");
-        _trayIcon?.Dispose();
-        _ownedTrayIcon?.Dispose();
+        _services.Logger.Write($"Exit, code={e.ApplicationExitCode}");
+        _tray?.Dispose();
         if (_singleInstanceMutex is not null)
         {
             try { _singleInstanceMutex.ReleaseMutex(); } catch { }
             _singleInstanceMutex.Dispose();
         }
+        try
+        {
+            _services.CompanionCoordinator.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            _services.Logger.Write($"Companion host shutdown failed: {ex}");
+        }
         base.OnExit(e);
-    }
-}
-
-internal static class DrawingExtensions
-{
-    public static void FillRoundedRectangle(this Graphics graphics, Brush brush, Rectangle rectangle, int radius)
-    {
-        using var path = new GraphicsPath();
-        var diameter = radius * 2;
-        path.AddArc(rectangle.Left, rectangle.Top, diameter, diameter, 180, 90);
-        path.AddArc(rectangle.Right - diameter, rectangle.Top, diameter, diameter, 270, 90);
-        path.AddArc(rectangle.Right - diameter, rectangle.Bottom - diameter, diameter, diameter, 0, 90);
-        path.AddArc(rectangle.Left, rectangle.Bottom - diameter, diameter, diameter, 90, 90);
-        path.CloseFigure();
-        graphics.FillPath(brush, path);
     }
 }

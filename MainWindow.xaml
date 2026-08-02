@@ -2,14 +2,15 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Android Widget"
+        Icon="{StaticResource AppIconImage}"
         Width="258" Height="392"
-        MinWidth="0" MinHeight="0"
+        MinWidth="230" MinHeight="350" MaxWidth="1100" MaxHeight="900"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ResizeMode="NoResize" ShowInTaskbar="True" Topmost="True"
         Loaded="Window_Loaded" Closing="Window_Closing">
     <Grid Margin="8">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="234" />
+            <ColumnDefinition Width="*" />
             <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
 
@@ -42,7 +43,7 @@
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="ADB" FontSize="10" FontWeight="SemiBold" Foreground="#8390AE"
+                            <TextBlock Text="ADB" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondary}"
                                        VerticalAlignment="Center" />
                             <Button Grid.Column="1" Style="{StaticResource IconButton}"
                                     Width="26" Height="26" Margin="0,0,4,0" Background="Transparent"
@@ -58,8 +59,16 @@
                                     ToolTip="Поверх остальных окон" Click="PinButton_Click" />
                             <Button Grid.Column="4" Style="{StaticResource IconButton}"
                                     Width="26" Height="26" Background="Transparent" BorderBrush="Transparent"
-                                    Foreground="{DynamicResource TextSecondary}" Content="×" FontSize="16"
-                                    ToolTip="Закрыть" Click="CloseButton_Click" />
+                                    Foreground="{DynamicResource TextSecondary}"
+                                    ToolTip="Закрыть" Click="CloseButton_Click">
+                                <Viewbox Width="11" Height="11" IsHitTestVisible="False">
+                                    <Canvas Width="12" Height="12">
+                                        <Path Data="M 1.5,1.5 L 10.5,10.5 M 10.5,1.5 L 1.5,10.5"
+                                              Stroke="{DynamicResource TextSecondary}" StrokeThickness="1.6"
+                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                                    </Canvas>
+                                </Viewbox>
+                            </Button>
                         </Grid>
 
                         <StackPanel Grid.Row="1" VerticalAlignment="Center" Margin="17,0">
@@ -106,7 +115,7 @@
                             </Border>
 
                             <TextBlock x:Name="StatusText" Text="Нажмите, чтобы открыть действия"
-                                       Margin="3,9,3,0" FontSize="9.5" Foreground="#727E9D"
+                                       Margin="3,9,3,0" FontSize="9.5" Foreground="{DynamicResource TextSecondary}"
                                        TextAlignment="Center" TextWrapping="Wrap" MaxHeight="28" />
                         </StackPanel>
 
@@ -115,9 +124,9 @@
                                 Panel.ZIndex="5" IsHitTestVisible="False">
                             <StackPanel VerticalAlignment="Center">
                                 <Grid x:Name="MainPowerIcon" Width="72" Height="72" HorizontalAlignment="Center">
-                                    <Ellipse Width="56" Height="56" Stroke="#FF4747" StrokeThickness="6"
+                                    <Ellipse Width="56" Height="56" Stroke="{DynamicResource DangerText}" StrokeThickness="6"
                                              VerticalAlignment="Bottom" />
-                                    <Border Width="8" Height="32" CornerRadius="4" Background="#FF4747"
+                                    <Border Width="8" Height="32" CornerRadius="4" Background="{DynamicResource DangerText}"
                                             VerticalAlignment="Top" />
                                     <Border Width="16" Height="13" Background="#CC15101A"
                                             VerticalAlignment="Top" Margin="0,20,0,0" />
@@ -126,36 +135,36 @@
                                          HorizontalAlignment="Center" Visibility="Collapsed">
                                     <Canvas Width="64" Height="64">
                                         <Path Data="M 17,30 L 17,22 C 17,8 47,8 47,22 L 47,30"
-                                              Stroke="#FF4747" StrokeThickness="6"
+                                              Stroke="{DynamicResource DangerText}" StrokeThickness="6"
                                               StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
                                         <Border Canvas.Left="7" Canvas.Top="27" Width="50" Height="34"
                                                 CornerRadius="7" Background="Transparent"
-                                                BorderBrush="#FF4747" BorderThickness="5" />
+                                                BorderBrush="{DynamicResource DangerText}" BorderThickness="5" />
                                         <Ellipse Canvas.Left="28" Canvas.Top="39" Width="8" Height="8"
-                                                 Fill="#FF4747" />
+                                                 Fill="{DynamicResource DangerText}" />
                                         <Rectangle Canvas.Left="30" Canvas.Top="44" Width="4" Height="8"
-                                                   RadiusX="2" RadiusY="2" Fill="#FF4747" />
+                                                   RadiusX="2" RadiusY="2" Fill="{DynamicResource DangerText}" />
                                     </Canvas>
                                 </Viewbox>
                                 <TextBlock x:Name="PowerStateText" Text="Телефон заблокирован"
-                                           Foreground="#FF8A8A" FontWeight="SemiBold" TextAlignment="Center"
+                                           Foreground="{DynamicResource DangerText}" FontWeight="SemiBold" TextAlignment="Center"
                                            Margin="8,7,8,0" />
                             </StackPanel>
                         </Border>
 
                         <Border x:Name="AuthorizationOverlay" Grid.Row="1" Visibility="Collapsed"
-                                Background="#EA251B0A" BorderBrush="#FFB84D" BorderThickness="2"
+                                Background="#EA251B0A" BorderBrush="{DynamicResource WarningText}" BorderThickness="2"
                                 CornerRadius="22" Margin="14,7" Panel.ZIndex="6" IsHitTestVisible="False">
                             <StackPanel VerticalAlignment="Center" Margin="12">
                                 <Border Width="68" Height="68" CornerRadius="34" Background="#34FFB84D"
-                                        BorderBrush="#FFB84D" BorderThickness="2" HorizontalAlignment="Center">
-                                    <TextBlock Text="!" Foreground="#FFB84D" FontSize="47" FontWeight="Bold"
+                                        BorderBrush="{DynamicResource WarningText}" BorderThickness="2" HorizontalAlignment="Center">
+                                    <TextBlock Text="!" Foreground="{DynamicResource WarningText}" FontSize="47" FontWeight="Bold"
                                                TextAlignment="Center" VerticalAlignment="Center" />
                                 </Border>
-                                <TextBlock Text="Требуется авторизация ADB" Foreground="#FFD18A"
+                                <TextBlock Text="Требуется авторизация ADB" Foreground="{DynamicResource WarningText}"
                                            FontWeight="SemiBold" TextAlignment="Center" Margin="0,12,0,0" />
                                 <TextBlock Text="Разблокируйте телефон и подтвердите RSA-ключ"
-                                           Foreground="#CFC1A4" FontSize="10" TextAlignment="Center"
+                                           Foreground="{DynamicResource TextSecondary}" FontSize="10" TextAlignment="Center"
                                            TextWrapping="Wrap" Margin="7,5,7,0" />
                             </StackPanel>
                         </Border>
@@ -189,48 +198,12 @@
             </Grid>
         </Border>
 
-        <!-- Мини-режим: только маленький телефон и статус подключения -->
-        <Border x:Name="MiniPhone" Grid.Column="0" Width="66" Height="88"
-                HorizontalAlignment="Left" VerticalAlignment="Top" Visibility="Collapsed"
-                CornerRadius="18" Background="#090C13" BorderBrush="#343C55" BorderThickness="1.2"
-                Cursor="Hand" ToolTip="Нажмите, чтобы развернуть Android Widget"
-                AllowDrop="True" DragEnter="MiniPhone_DragEnter" DragLeave="MiniPhone_DragLeave"
-                Drop="MiniPhone_Drop"
-                PreviewMouseLeftButtonDown="MiniPhone_MouseLeftButtonDown"
-                PreviewMouseMove="MiniPhone_MouseMove"
-                PreviewMouseLeftButtonUp="MiniPhone_MouseLeftButtonUp">
-            <Grid Margin="6">
-                <Border x:Name="MiniScreen" CornerRadius="13" Background="{DynamicResource ScreenBackground}"
-                        BorderBrush="#27314B" BorderThickness="1">
-                    <Grid>
-                        <Border Width="22" Height="6" CornerRadius="0,0,4,4" Background="#05070B"
-                                VerticalAlignment="Top" HorizontalAlignment="Center" />
-                        <Grid Width="30" Height="37" VerticalAlignment="Center">
-                            <Rectangle Width="24" Height="34" RadiusX="6" RadiusY="6"
-                                       Fill="#242B49" Stroke="#806AF4" StrokeThickness="1.4" />
-                            <Rectangle Width="15" Height="22" RadiusX="3" RadiusY="3"
-                                       Fill="#111729" VerticalAlignment="Top" Margin="0,6,0,0" />
-                            <Border Width="8" Height="2" CornerRadius="1" Background="#806AF4"
-                                    VerticalAlignment="Bottom" Margin="0,0,0,4" />
-                        </Grid>
-                        <Ellipse x:Name="MiniStatusDot" Width="8" Height="8" Fill="#69738E"
-                                 Stroke="#0B0E17" StrokeThickness="1.5"
-                                 HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,7,7" />
-                        <TextBlock x:Name="MiniDropArrow" Text="↓" Visibility="Collapsed"
-                                   Foreground="White" FontSize="34" FontWeight="Bold"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Grid>
-                </Border>
-            </Grid>
-        </Border>
-
         <!-- Раскрываемая панель действий -->
         <Border x:Name="ActionPanel" Grid.Column="1" Visibility="Collapsed" Width="310" Margin="12,8,8,8"
                 CornerRadius="22" Background="{DynamicResource WindowSurface}"
                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
             <Grid Margin="17">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
@@ -244,55 +217,169 @@
                     <StackPanel>
                         <TextBlock Text="Действия" FontSize="18" FontWeight="SemiBold"
                                    Foreground="{DynamicResource TextPrimary}" />
-                        <TextBlock Text="Android Widget" FontSize="10" Foreground="#7884A3" />
+                        <TextBlock Text="Android Widget" FontSize="10" Foreground="{DynamicResource TextSecondary}" />
                     </StackPanel>
-                    <Button Grid.Column="1" Style="{StaticResource IconButton}" Content="×" FontSize="17"
-                            Click="CollapsePanel_Click" />
+                    <Button Grid.Column="1" Style="{StaticResource IconButton}" Click="CollapsePanel_Click"
+                            ToolTip="Закрыть панель действий">
+                        <Viewbox Width="12" Height="12" IsHitTestVisible="False">
+                            <Canvas Width="12" Height="12">
+                                <Path Data="M 1.5,1.5 L 10.5,10.5 M 10.5,1.5 L 1.5,10.5"
+                                      Stroke="{DynamicResource TextSecondary}" StrokeThickness="1.6"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
                 </Grid>
 
-                <ComboBox x:Name="DevicesCombo" Grid.Row="1" Margin="0,13,0,12" Height="32"
-                          Background="{DynamicResource SurfaceBrush}" Foreground="{DynamicResource TextPrimary}"
-                          BorderBrush="{DynamicResource BorderBrush}" Padding="8,3"
-                          DisplayMemberPath="PickerLabel" SelectionChanged="DevicesCombo_SelectionChanged" />
-
-                <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
-                    <StackPanel>
-                        <Button Style="{StaticResource ActionButton}" Click="ScreenButton_Click">
-                            <StackPanel><TextBlock Text="▣  Трансляция экрана" FontWeight="SemiBold" />
-                                <TextBlock Text="scrcpy — управление мышью и клавиатурой" FontSize="10" Foreground="#8D99B6" /></StackPanel>
+                <ScrollViewer Grid.Row="1" Margin="0,10,0,0" VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <UniformGrid Columns="4" HorizontalAlignment="Center">
+                        <Button Style="{StaticResource AppTileButton}" Click="ScreenButton_Click"
+                                ToolTip="Трансляция и управление через scrcpy">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Border Width="48" Height="48" CornerRadius="14" Background="#7559E8">
+                                    <TextBlock Text="&#xE7F4;" FontFamily="Segoe Fluent Icons" FontSize="22"
+                                               Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <TextBlock Text="Экран" Margin="0,5,0,0" FontSize="10.5" TextAlignment="Center" />
+                            </StackPanel>
                         </Button>
-                        <Button Style="{StaticResource ActionButton}" Click="FilesButton_Click">
-                            <StackPanel><TextBlock Text="▰  Файлы и фотографии" FontWeight="SemiBold" />
-                                <TextBlock Text="ADB-браузер: Camera, Download и другие папки" FontSize="10" Foreground="#8D99B6" /></StackPanel>
+                        <Button Style="{StaticResource AppTileButton}" Click="FilesButton_Click"
+                                ToolTip="Файлы, фотографии и папки телефона">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Border Width="48" Height="48" CornerRadius="14" Background="#E59A27">
+                                    <TextBlock Text="&#xE8B7;" FontFamily="Segoe Fluent Icons" FontSize="22"
+                                               Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <TextBlock Text="Файлы" Margin="0,5,0,0" FontSize="10.5" TextAlignment="Center" />
+                            </StackPanel>
                         </Button>
-                        <Button Style="{StaticResource ActionButton}" Click="ScreenshotButton_Click">
-                            <StackPanel><TextBlock Text="◉  Снимок экрана" FontWeight="SemiBold" />
-                                <TextBlock Text="Выбрать папку и имя PNG перед сохранением" FontSize="10" Foreground="#8D99B6" /></StackPanel>
+                        <Button Style="{StaticResource AppTileButton}" Click="ScreenshotButton_Click"
+                                ToolTip="Сделать и сохранить PNG-скриншот">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Border Width="48" Height="48" CornerRadius="14" Background="#DD4F78">
+                                    <TextBlock Text="&#xE722;" FontFamily="Segoe Fluent Icons" FontSize="22"
+                                               Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <TextBlock Text="Скриншот" Margin="0,5,0,0" FontSize="10.5" TextAlignment="Center" />
+                            </StackPanel>
                         </Button>
-                        <Button Style="{StaticResource ActionButton}" Click="InstallButton_Click">
-                            <StackPanel><TextBlock Text="◆  Установить APK" FontWeight="SemiBold" />
-                                <TextBlock Text="Выбрать пакет с компьютера" FontSize="10" Foreground="#8D99B6" /></StackPanel>
+                        <Button Style="{StaticResource AppTileButton}" Click="InstallButton_Click"
+                                ToolTip="Выбрать и установить APK">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Border Width="48" Height="48" CornerRadius="14" Background="#30A66B">
+                                    <TextBlock Text="&#xE7B8;" FontFamily="Segoe Fluent Icons" FontSize="22"
+                                               Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <TextBlock Text="APK" Margin="0,5,0,0" FontSize="10.5" TextAlignment="Center" />
+                            </StackPanel>
                         </Button>
-                        <Grid>
-                            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
-                            <Button Grid.Column="0" Style="{StaticResource ActionButton}" Margin="0,0,4,8"
-                                    HorizontalContentAlignment="Center" Content="⌘  ADB shell" Click="ShellButton_Click" />
-                            <Button Grid.Column="1" Style="{StaticResource ActionButton}" Margin="4,0,0,8"
-                                    HorizontalContentAlignment="Center" Content="▤  Вставить текст" Click="ClipboardButton_Click" />
-                        </Grid>
-                        <Grid>
-                            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
-                            <Button Grid.Column="0" Style="{StaticResource ActionButton}" Margin="0,0,4,8"
-                                    HorizontalContentAlignment="Center" Content="◐  Экран вкл/выкл" Click="PowerButton_Click" />
-                            <Button Grid.Column="1" Style="{StaticResource ActionButton}" Margin="4,0,0,8"
-                                    HorizontalContentAlignment="Center" Content="▰  MTP / Этот ПК" Click="MtpButton_Click" />
-                        </Grid>
-                    </StackPanel>
+                        <Button Style="{StaticResource AppTileButton}" Click="ShellButton_Click"
+                                ToolTip="Открыть ADB shell">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Border Width="48" Height="48" CornerRadius="14" Background="#394252">
+                                    <TextBlock Text="&#xE756;" FontFamily="Segoe Fluent Icons" FontSize="22"
+                                               Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <TextBlock Text="Shell" Margin="0,5,0,0" FontSize="10.5" TextAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource AppTileButton}" Click="ClipboardButton_Click"
+                                ToolTip="Отправить текст из буфера обмена">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Border Width="48" Height="48" CornerRadius="14" Background="#148E9E">
+                                    <TextBlock Text="&#xE77F;" FontFamily="Segoe Fluent Icons" FontSize="22"
+                                               Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <TextBlock Text="Буфер" Margin="0,5,0,0" FontSize="10.5" TextAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource AppTileButton}" Click="PowerButton_Click"
+                                ToolTip="Включить или выключить экран телефона">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Border Width="48" Height="48" CornerRadius="14" Background="#D54B43">
+                                    <TextBlock Text="&#xE7E8;" FontFamily="Segoe Fluent Icons" FontSize="22"
+                                               Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <TextBlock Text="Питание" Margin="0,5,0,0" FontSize="10.5" TextAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource AppTileButton}" Click="MtpButton_Click"
+                                ToolTip="Открыть устройство через MTP в Проводнике">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Border Width="48" Height="48" CornerRadius="14" Background="#5070A8">
+                                    <TextBlock Text="&#xE7F1;" FontFamily="Segoe Fluent Icons" FontSize="22"
+                                               Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <TextBlock Text="MTP" Margin="0,5,0,0" FontSize="10.5" TextAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="CompanionButton" Style="{StaticResource AppTileButton}"
+                                Click="CompanionButton_Click" ToolTip="Установить Android Widget Companion">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Border Width="48" Height="48" CornerRadius="14" Background="#6157A8">
+                                    <TextBlock Text="&#xE8EA;" FontFamily="Segoe Fluent Icons" FontSize="22"
+                                               Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <TextBlock x:Name="CompanionButtonText" Text="Компаньон" Margin="0,5,0,0"
+                                           FontSize="10.5" TextAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                    </UniformGrid>
                 </ScrollViewer>
 
-                <TextBlock x:Name="PanelStatusText" Grid.Row="3" Text="Готово" Margin="2,8,2,0"
-                           FontSize="10" Foreground="#7F8BA9" TextTrimming="CharacterEllipsis" />
+                <StackPanel Grid.Row="2" Margin="2,8,2,0">
+                    <TextBlock x:Name="PanelStatusText" Text="Готово" FontSize="10"
+                               Foreground="{DynamicResource TextSecondary}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock x:Name="CompanionStatusText" Text="Функции companion отключены" Margin="0,3,0,0"
+                               FontSize="9.5" Foreground="{DynamicResource TextSecondary}"
+                               TextTrimming="CharacterEllipsis" />
+                </StackPanel>
             </Grid>
         </Border>
+
+        <Popup x:Name="SmsBubblePopup" PlacementTarget="{Binding ElementName=PhoneShell}"
+               Placement="Left" HorizontalOffset="-7" AllowsTransparency="True"
+               PopupAnimation="Fade" StaysOpen="True">
+            <ItemsControl x:Name="SmsBubbleItems" Width="278" Margin="8">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Margin="0,0,0,7">
+                            <Border Margin="0,0,9,0" Padding="14,12" CornerRadius="16"
+                                    Background="{DynamicResource SurfaceBrush}"
+                                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                                    Cursor="Hand" MouseLeftButtonUp="SmsBubble_MouseLeftButtonUp">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="32" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Width="26" Height="26" CornerRadius="13" VerticalAlignment="Top"
+                                            Background="{DynamicResource Accent}">
+                                        <Path Data="M 6,7 L 20,7 L 20,17 L 13,17 L 9,21 L 9,17 L 6,17 Z"
+                                              Fill="White" Stretch="Uniform" Margin="6" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="7,0,0,0">
+                                        <TextBlock Text="{Binding Message.Sender}" FontSize="11.5"
+                                                   FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Message.Preview}" Margin="0,4,0,0" FontSize="10.5"
+                                                   Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"
+                                                   MaxHeight="48" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="Нажмите, чтобы скрыть" Margin="0,7,0,0" FontSize="9.5"
+                                                   Foreground="{DynamicResource Accent}" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                            <Path Data="M 0,0 L 10,8 L 0,16 Z" Width="10" Height="16"
+                                  Fill="{DynamicResource SurfaceBrush}" Stretch="Fill"
+                                  HorizontalAlignment="Right" VerticalAlignment="Center" />
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Popup>
+        <Thumb Style="{StaticResource CornerResizeThumb}" Panel.ZIndex="50"
+               DragDelta="ResizeGrip_DragDelta" DragCompleted="ResizeGrip_DragCompleted" />
     </Grid>
 </Window>

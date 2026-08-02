@@ -1,10 +1,12 @@
-using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using AndroidWidget.Models;
+using AndroidWidget.Presentation.Notifications;
+using AndroidWidget.Presentation.Screenshots;
 using AndroidWidget.Services;
 using Microsoft.Win32;
 
@@ -15,35 +17,63 @@ public partial class MainWindow : Window
     public event EventHandler<IReadOnlyList<AndroidDevice>>? DevicesUpdated;
     private const double CompactWidth = 258;
     private const double CompactHeight = 392;
-    private const double ExpandedWidth = 588;
-    private const double MiniWidth = 88;
-    private const double MiniHeight = 110;
-    private readonly AdbService _adb = new();
+    private const double CompactMinWidth = 230;
+    private const double ExpandedPanelSpace = 330;
+    private const double ExpandedMinWidth = CompactMinWidth + ExpandedPanelSpace;
+    private readonly IAndroidDeviceService _devicesService;
+    private readonly ISettingsService _settings;
+    private readonly IDesktopIntegration _desktop;
+    private readonly IAppLogger _logger;
+    private readonly ScreenshotStorage _screenshots;
+    private readonly ICompanionService _companion;
+    private readonly CompanionCoordinator _companionCoordinator;
     private readonly DispatcherTimer _refreshTimer;
+    private readonly NotificationBubbleStack _smsBubbles = new();
     private readonly CancellationTokenSource _lifetime = new();
     private IReadOnlyList<AndroidDevice> _devices = Array.Empty<AndroidDevice>();
     private AndroidDevice? _activeDevice;
+    private string? _boundSerial;
     private bool _refreshing;
     private bool _menuOpen;
     private bool _operationInProgress;
-    private bool _ignoreComboChange;
-    private bool _isMini;
-    private Point _miniMouseDownPoint;
-    private bool _miniDragStarted;
 
-    public MainWindow()
+    public MainWindow(IAndroidDeviceService devicesService, ISettingsService settings,
+        IDesktopIntegration desktop, IAppLogger logger, ScreenshotStorage screenshots,
+        ICompanionService companion, CompanionCoordinator companionCoordinator)
     {
-        AppLog.Write("MainWindow constructor begin");
+        _devicesService = devicesService;
+        _settings = settings;
+        _desktop = desktop;
+        _logger = logger;
+        _screenshots = screenshots;
+        _companion = companion;
+        _companionCoordinator = companionCoordinator;
+        _companionCoordinator.LinkChanged += CompanionLinkChanged;
+        _companionCoordinator.MessageReceived += CompanionMessageReceived;
+        _logger.Write("MainWindow constructor begin");
         InitializeComponent();
-        AppLog.Write("MainWindow XAML initialized");
+        _logger.Write("MainWindow XAML initialized");
         _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
         _refreshTimer.Tick += async (_, _) => await RefreshDevicesAsync();
+        SmsBubbleItems.ItemsSource = _smsBubbles.Items;
+        _smsBubbles.Changed += SmsBubblesChanged;
+        _settings.Changed += SettingsChanged;
+        IsVisibleChanged += (_, _) =>
+        {
+            if (!IsVisible)
+                ClearSmsBubbles();
+            else
+                RefreshSmsBubbleVisibility();
+        };
     }
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        AppLog.Write("MainWindow loaded");
+        _logger.Write("MainWindow loaded");
         RestoreSettings();
+        var companionHost = await _companionCoordinator.StartAsync(_lifetime.Token);
+        if (!companionHost.IsSuccess)
+            SetOperationStatus($"Не удалось запустить Companion Host: {companionHost.BestMessage}", true);
         await RefreshDevicesAsync();
         _refreshTimer.Start();
     }
@@ -57,7 +87,12 @@ public partial class MainWindow : Window
             return;
         }
         _refreshTimer.Stop();
+        _smsBubbles.Changed -= SmsBubblesChanged;
+        _smsBubbles.Dispose();
+        _settings.Changed -= SettingsChanged;
         _lifetime.Cancel();
+        _companionCoordinator.LinkChanged -= CompanionLinkChanged;
+        _companionCoordinator.MessageReceived -= CompanionMessageReceived;
         SaveSettings();
     }
 
@@ -67,15 +102,28 @@ public partial class MainWindow : Window
             return;
 
         _refreshing = true;
-        var previousSerial = _activeDevice?.Serial;
         try
         {
-            var devices = await _adb.GetDevicesAsync(_lifetime.Token);
+            var discovered = await _devicesService.GetDevicesAsync(_lifetime.Token);
+            _companionCoordinator.RetainAdbRoutes(discovered.Select(device => device.Serial));
+            foreach (var installedDevice in discovered.Where(device =>
+                         device.State == DeviceConnectionState.Online &&
+                         device.CompanionState == CompanionInstallationState.Installed))
+                await _companionCoordinator.EnsureAdbRouteAsync(installedDevice.Serial, _lifetime.Token);
+            var devices = discovered.Select(device =>
+            {
+                var link = _companionCoordinator.GetLinkState(device.Serial);
+                return device with
+                {
+                    IsCompanionConnected = link.IsConnected,
+                    CompanionNotificationAccess = link.HasNotificationAccess
+                };
+            }).ToList();
             _devices = devices;
-            var selected = devices.FirstOrDefault(device => device.Serial == previousSerial)
-                           ?? devices.FirstOrDefault(device => device.State == DeviceConnectionState.Online)
-                           ?? devices.FirstOrDefault();
-            UpdateDevicePicker(selected);
+            var selected = _boundSerial is not null
+                ? devices.FirstOrDefault(device => device.Serial == _boundSerial)
+                : devices.FirstOrDefault(device => device.State == DeviceConnectionState.Online)
+                  ?? devices.FirstOrDefault();
             SetActiveDevice(selected);
             DevicesUpdated?.Invoke(this, devices);
         }
@@ -83,7 +131,6 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             _devices = Array.Empty<AndroidDevice>();
-            UpdateDevicePicker(null);
             SetActiveDevice(null, ex.Message);
             DevicesUpdated?.Invoke(this, _devices);
         }
@@ -93,30 +140,53 @@ public partial class MainWindow : Window
         }
     }
 
-    private void UpdateDevicePicker(AndroidDevice? selected)
+    private void CompanionLinkChanged(object? sender, CompanionLinkState state) => Dispatcher.BeginInvoke(() =>
     {
-        _ignoreComboChange = true;
-        DevicesCombo.ItemsSource = _devices;
-        DevicesCombo.SelectedItem = selected;
-        DevicesCombo.IsEnabled = false;
-        DevicesCombo.ToolTip = _devices.Count > 1
-            ? "Для переключения откройте мини-карточку другого устройства"
-            : null;
-        _ignoreComboChange = false;
-    }
+        var changed = false;
+        _devices = _devices.Select(device =>
+        {
+            if (device.Serial != state.Serial)
+                return device;
+            changed = true;
+            return device with
+            {
+                IsCompanionConnected = state.IsConnected,
+                CompanionNotificationAccess = state.HasNotificationAccess
+            };
+        }).ToList();
+        if (!changed)
+            return;
+        if (_activeDevice?.Serial == state.Serial)
+            SetActiveDevice(_devices.First(device => device.Serial == state.Serial));
+        DevicesUpdated?.Invoke(this, _devices);
+    });
+
+    private void CompanionMessageReceived(object? sender, CompanionPhoneMessage received) =>
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (!_settings.Current.ShowSmsBubbles)
+                return;
+            var changed = false;
+            _devices = _devices.Select(device =>
+            {
+                if (device.Serial != received.Serial)
+                    return device;
+                changed = true;
+                return device with { LatestMessage = received.Message };
+            }).ToList();
+            if (!changed)
+                return;
+            if (_activeDevice?.Serial == received.Serial)
+                SetActiveDevice(_devices.First(device => device.Serial == received.Serial));
+            DevicesUpdated?.Invoke(this, _devices);
+        });
 
     private void SetActiveDevice(AndroidDevice? device, string? error = null)
     {
         _activeDevice = device;
-        MiniStatusDot.Fill = new SolidColorBrush(device?.State switch
-        {
-            DeviceConnectionState.Online => Color.FromRgb(114, 216, 162),
-            DeviceConnectionState.Unauthorized => Color.FromRgb(255, 190, 92),
-            DeviceConnectionState.Offline => Color.FromRgb(255, 105, 105),
-            _ => Color.FromRgb(105, 115, 142)
-        });
         if (device is null)
         {
+            ClearSmsBubbles();
             PowerStateOverlay.Visibility = Visibility.Collapsed;
             AuthorizationOverlay.Visibility = Visibility.Collapsed;
             DeviceNameText.Text = "Устройство не найдено";
@@ -126,6 +196,7 @@ public partial class MainWindow : Window
             DropHintText.Text = "Ожидаю Android по ADB";
             StatusText.Text = error ?? "Проверьте USB debugging или Wi-Fi ADB";
             PanelStatusText.Text = error ?? "Нет подключённых устройств";
+            UpdateCompanionUi(null);
             return;
         }
 
@@ -169,6 +240,13 @@ public partial class MainWindow : Window
                 PanelStatusText.Text = "ADB: устройство offline";
                 break;
         }
+
+        UpdateCompanionUi(device);
+
+        if (!_settings.Current.ShowSmsBubbles)
+            ClearSmsBubbles();
+        else if (CanShowMessageBubble && device.LatestMessage is not null)
+            ShowSmsBubble(device.LatestMessage);
     }
 
     private AndroidDevice? RequireOnlineDevice()
@@ -225,29 +303,6 @@ public partial class MainWindow : Window
 
     private void Phone_DragLeave(object sender, DragEventArgs e) => DropOverlay.Visibility = Visibility.Collapsed;
 
-    private void MiniPhone_DragEnter(object sender, DragEventArgs e)
-    {
-        var valid = e.Data.GetDataPresent(DataFormats.FileDrop) && _activeDevice?.State == DeviceConnectionState.Online;
-        e.Effects = valid ? DragDropEffects.Copy : DragDropEffects.None;
-        MiniDropArrow.Visibility = valid ? Visibility.Visible : Visibility.Collapsed;
-        MiniScreen.Opacity = valid ? 0.35 : 1;
-        e.Handled = true;
-    }
-
-    private void MiniPhone_DragLeave(object sender, DragEventArgs e) => ResetMiniDropVisual();
-
-    private void MiniPhone_Drop(object sender, DragEventArgs e)
-    {
-        ResetMiniDropVisual();
-        Phone_Drop(sender, e);
-    }
-
-    private void ResetMiniDropVisual()
-    {
-        MiniDropArrow.Visibility = Visibility.Collapsed;
-        MiniScreen.Opacity = 1;
-    }
-
     private async void Phone_Drop(object sender, DragEventArgs e)
     {
         DropOverlay.Visibility = Visibility.Collapsed;
@@ -272,8 +327,8 @@ public partial class MainWindow : Window
                     : $"Копирую {name} ({index + 1}/{paths.Length})…");
 
                 var result = isApk
-                    ? await _adb.InstallApkAsync(device.Serial, path, token)
-                    : await _adb.PushFileAsync(device.Serial, path, token);
+                    ? await _devicesService.InstallApkAsync(device.Serial, path, token)
+                    : await _devicesService.PushFileAsync(device.Serial, path, token);
                 if (!result.IsSuccess)
                     throw new InvalidOperationException($"{name}: {result.BestMessage}");
             }
@@ -287,6 +342,17 @@ public partial class MainWindow : Window
         if (e.ButtonState == MouseButtonState.Pressed && e.OriginalSource is not Button)
             DragMove();
     }
+
+    private void ResizeGrip_DragDelta(object sender, DragDeltaEventArgs e)
+    {
+        var workArea = SystemParameters.WorkArea;
+        var maximumWidth = Math.Min(MaxWidth, workArea.Right - Left);
+        var maximumHeight = Math.Min(MaxHeight, workArea.Bottom - Top);
+        Width = Math.Clamp(Width + e.HorizontalChange, MinWidth, Math.Max(MinWidth, maximumWidth));
+        Height = Math.Clamp(Height + e.VerticalChange, MinHeight, Math.Max(MinHeight, maximumHeight));
+    }
+
+    private void ResizeGrip_DragCompleted(object sender, DragCompletedEventArgs e) => SaveSettings();
 
     private void PhoneScreen_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
@@ -304,61 +370,25 @@ public partial class MainWindow : Window
     private void SettingsButton_Click(object sender, RoutedEventArgs e) =>
         ((App)System.Windows.Application.Current).ShowSettings();
 
-    private void MiniPhone_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        _miniMouseDownPoint = e.GetPosition(this);
-        _miniDragStarted = false;
-        MiniPhone.CaptureMouse();
-        e.Handled = true;
-    }
-
-    private void MiniPhone_MouseMove(object sender, MouseEventArgs e)
-    {
-        if (e.LeftButton != MouseButtonState.Pressed || !MiniPhone.IsMouseCaptured || _miniDragStarted)
-            return;
-
-        var current = e.GetPosition(this);
-        if (Math.Abs(current.X - _miniMouseDownPoint.X) < SystemParameters.MinimumHorizontalDragDistance &&
-            Math.Abs(current.Y - _miniMouseDownPoint.Y) < SystemParameters.MinimumVerticalDragDistance)
-            return;
-
-        _miniDragStarted = true;
-        MiniPhone.ReleaseMouseCapture();
-        DragMove();
-        SaveSettings();
-        e.Handled = true;
-    }
-
-    private void MiniPhone_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-    {
-        if (MiniPhone.IsMouseCaptured)
-            MiniPhone.ReleaseMouseCapture();
-        if (!_miniDragStarted)
-            SetMiniMode(false);
-        e.Handled = true;
-    }
-
-    private void SetMiniMode(bool mini, bool save = true)
-    {
-        _isMini = mini;
-        _menuOpen = false;
-        ActionPanel.Visibility = Visibility.Collapsed;
-        PhoneShell.Visibility = mini ? Visibility.Collapsed : Visibility.Visible;
-        MiniPhone.Visibility = mini ? Visibility.Visible : Visibility.Collapsed;
-        Width = mini ? MiniWidth : CompactWidth;
-        Height = mini ? MiniHeight : CompactHeight;
-        KeepWindowOnScreen();
-        if (save)
-            SaveSettings();
-    }
-
     private void ToggleActionPanel(bool? open = null)
     {
-        if (_isMini)
-            SetMiniMode(false, false);
-        _menuOpen = open ?? !_menuOpen;
+        var nextOpen = open ?? !_menuOpen;
+        if (nextOpen == _menuOpen)
+            return;
+
+        if (nextOpen)
+        {
+            MinWidth = ExpandedMinWidth;
+            Width = Math.Min(Math.Max(ExpandedMinWidth, Width + ExpandedPanelSpace), MaxWidth);
+        }
+        else
+        {
+            MinWidth = CompactMinWidth;
+            Width = Math.Max(CompactMinWidth, Width - ExpandedPanelSpace);
+        }
+
+        _menuOpen = nextOpen;
         ActionPanel.Visibility = _menuOpen ? Visibility.Visible : Visibility.Collapsed;
-        Width = _menuOpen ? ExpandedWidth : CompactWidth;
         KeepWindowOnScreen();
     }
 
@@ -369,23 +399,20 @@ public partial class MainWindow : Window
     private void PinButton_Click(object sender, RoutedEventArgs e)
     {
         Topmost = !Topmost;
-        SettingsService.Update(settings => settings with { Topmost = Topmost });
+        _settings.Update(settings => settings with { Topmost = Topmost });
         PinButton.Foreground = new SolidColorBrush(Topmost ? Color.FromRgb(138, 115, 255) : Color.FromRgb(120, 132, 163));
         SetOperationStatus(Topmost ? "Виджет закреплён поверх окон" : "Режим «поверх окон» выключен");
     }
 
-    private void DevicesCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (!_ignoreComboChange && DevicesCombo.SelectedItem is AndroidDevice selected)
-            SetActiveDevice(selected);
-    }
-
     public void SelectDevice(string serial)
     {
+        _boundSerial = serial;
         var selected = _devices.FirstOrDefault(device => device.Serial == serial);
         if (selected is null)
+        {
+            SetActiveDevice(null);
             return;
-        UpdateDevicePicker(selected);
+        }
         SetActiveDevice(selected);
     }
 
@@ -394,18 +421,76 @@ public partial class MainWindow : Window
         var device = RequireOnlineDevice();
         if (device is null)
             return;
-        if (_adb.TryStartScrcpy(device.Serial, out var error))
+        var result = _devicesService.StartScreenMirroring(device.Serial);
+        if (result.IsSuccess)
             SetOperationStatus("scrcpy запущен ✓");
         else
-            SetOperationStatus(error ?? "Не удалось запустить scrcpy", true);
+            SetOperationStatus(result.BestMessage, true);
     }
+
+    private void SmsBubble_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: NotificationBubbleItem item })
+            _smsBubbles.Remove(item);
+        e.Handled = true;
+    }
+
+    private void ShowSmsBubble(PhoneMessage message)
+    {
+        // A WPF Popup can remain visible even when its owning window is hidden.
+        // In mini mode the per-device mini window owns notifications, so the
+        // background main window must never open a duplicate popup.
+        if (!CanShowMessageBubble)
+        {
+            ClearSmsBubbles();
+            return;
+        }
+
+        _smsBubbles.Add(message);
+        RefreshSmsBubbleVisibility();
+    }
+
+    private bool CanShowMessageBubble => IsVisible && WindowState != WindowState.Minimized;
+
+    private TimeSpan NotificationDisplayDuration => TimeSpan.FromSeconds(
+        Math.Clamp(_settings.Current.NotificationDisplaySeconds, 5, 60));
+
+    private void SmsBubblesChanged(object? sender, EventArgs e) => RefreshSmsBubbleVisibility();
+
+    private void RefreshSmsBubbleVisibility()
+    {
+        var show = CanShowMessageBubble && _settings.Current.ShowSmsBubbles && _smsBubbles.Items.Count > 0;
+        SmsBubblePopup.IsOpen = show;
+        if (show)
+            _smsBubbles.Start(NotificationDisplayDuration);
+        else
+            _smsBubbles.Pause();
+    }
+
+    private void ClearSmsBubbles()
+    {
+        SmsBubblePopup.IsOpen = false;
+        _smsBubbles.Clear();
+    }
+
+    private void SettingsChanged(object? sender, EventArgs e) => Dispatcher.BeginInvoke(() =>
+    {
+        if (!_settings.Current.ShowSmsBubbles)
+        {
+            ClearSmsBubbles();
+            return;
+        }
+
+        _smsBubbles.Restart(NotificationDisplayDuration);
+        RefreshSmsBubbleVisibility();
+    });
 
     private void FilesButton_Click(object sender, RoutedEventArgs e)
     {
         var device = RequireOnlineDevice();
         if (device is null)
             return;
-        new RemoteFilesWindow(_adb, device) { Owner = this }.Show();
+        new RemoteFilesWindow(_devicesService, _desktop, device) { Owner = this }.Show();
         SetOperationStatus("Открыт ADB-браузер файлов");
     }
 
@@ -415,36 +500,17 @@ public partial class MainWindow : Window
         if (device is null)
             return;
 
-        var defaultFolder = SettingsService.Current.ScreenshotFolder;
-        if (string.IsNullOrWhiteSpace(defaultFolder) || !Directory.Exists(defaultFolder))
-            defaultFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
-
-        var dialog = new SaveFileDialog
-        {
-            Title = "Сохранить снимок экрана Android",
-            Filter = "PNG-изображение (*.png)|*.png",
-            DefaultExt = ".png",
-            AddExtension = true,
-            OverwritePrompt = true,
-            InitialDirectory = defaultFolder,
-            FileName = $"Screenshot_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.png"
-        };
-        if (dialog.ShowDialog(this) != true)
-        {
-            SetOperationStatus("Сохранение скриншота отменено");
-            return;
-        }
-
-        var file = dialog.FileName;
-        SaveSettings(Path.GetDirectoryName(file));
         await RunOperationAsync(async token =>
         {
             SetOperationStatus("Делаю снимок экрана…");
-            var result = await _adb.TakeScreenshotAsync(device.Serial, file, token);
+            var file = _screenshots.CreateFilePath(device);
+            var result = await _devicesService.TakeScreenshotAsync(device.Serial, file, token);
             if (!result.IsSuccess)
                 throw new InvalidOperationException(result.BestMessage);
             SetOperationStatus($"Сохранено: {Path.GetFileName(file)} ✓");
-            Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{file}\"") { UseShellExecute = true });
+            var reveal = _desktop.RevealFile(file);
+            if (!reveal.IsSuccess)
+                throw new InvalidOperationException(reveal.BestMessage);
         });
     }
 
@@ -460,6 +526,74 @@ public partial class MainWindow : Window
         await InstallApksAsync(device, dialog.FileNames);
     }
 
+    private async void CompanionButton_Click(object sender, RoutedEventArgs e)
+    {
+        var device = RequireOnlineDevice();
+        if (device is null)
+            return;
+        if (device.CompanionState == CompanionInstallationState.Installed)
+        {
+            if (device.IsCompanionConnected)
+            {
+                var open = await _companionCoordinator.OpenCompanionAsync(device.Serial, _lifetime.Token);
+                SetOperationStatus(open.IsSuccess
+                    ? "Компаньон открыт на телефоне"
+                    : open.BestMessage, !open.IsSuccess);
+                return;
+            }
+            await ShowPairingAsync(device);
+            return;
+        }
+        if (!_companion.IsInstallerAvailable)
+        {
+            SetOperationStatus("APK компаньона не входит в эту desktop-сборку", true);
+            return;
+        }
+
+        var consent = MessageBox.Show(this,
+            $"Установить Android Widget Companion на «{device.DisplayName}»?\n\n" +
+            "Установка начнётся только после вашего подтверждения. Доступ к уведомлениям приложение " +
+            "попросит отдельно на телефоне — автоматически он не выдаётся.",
+            "Установка компаньона", MessageBoxButton.YesNo, MessageBoxImage.Question,
+            MessageBoxResult.No);
+        if (consent != MessageBoxResult.Yes)
+        {
+            SetOperationStatus("Установка компаньона отменена");
+            return;
+        }
+
+        await RunOperationAsync(async token =>
+        {
+            SetOperationStatus("Устанавливаю Android Widget Companion…");
+            var result = await _companion.InstallAsync(device.Serial, token);
+            if (!result.IsSuccess)
+                throw new InvalidOperationException(result.BestMessage);
+            SetOperationStatus("Компаньон установлен и открыт на телефоне · нажмите «Сопрячь»");
+            await RefreshDevicesAsync(force: true);
+        });
+    }
+
+    private async Task ShowPairingAsync(AndroidDevice device)
+    {
+        SetOperationStatus("Создаю защищённую ссылку сопряжения…");
+        var pairing = await _companionCoordinator.CreateAndOpenPairingAsync(device.Serial, _lifetime.Token);
+        if (pairing.Session is null)
+        {
+            SetOperationStatus(pairing.LaunchResult.BestMessage, true);
+            return;
+        }
+        var window = new CompanionPairingWindow(device.Serial, device.DisplayName, pairing,
+            _companionCoordinator)
+        {
+            Owner = this
+        };
+        window.Show();
+        SetOperationStatus(pairing.LaunchResult.IsSuccess
+            ? "Ссылка сопряжения создана и открыта на телефоне"
+            : "Ссылка создана · откройте или скопируйте её из окна сопряжения",
+            !pairing.LaunchResult.IsSuccess);
+    }
+
     private async Task InstallApksAsync(AndroidDevice device, IReadOnlyList<string> paths)
     {
         await RunOperationAsync(async token =>
@@ -467,7 +601,7 @@ public partial class MainWindow : Window
             for (var i = 0; i < paths.Count; i++)
             {
                 SetOperationStatus($"Устанавливаю {Path.GetFileName(paths[i])} ({i + 1}/{paths.Count})…");
-                var result = await _adb.InstallApkAsync(device.Serial, paths[i], token);
+                var result = await _devicesService.InstallApkAsync(device.Serial, paths[i], token);
                 if (!result.IsSuccess)
                     throw new InvalidOperationException(result.BestMessage);
             }
@@ -482,8 +616,8 @@ public partial class MainWindow : Window
             return;
         try
         {
-            _adb.StartShell(device.Serial);
-            SetOperationStatus("ADB shell открыт");
+            var result = _devicesService.StartShell(device.Serial);
+            SetOperationStatus(result.IsSuccess ? "ADB shell открыт" : result.BestMessage, !result.IsSuccess);
         }
         catch (Exception ex) { SetOperationStatus(ex.Message, true); }
     }
@@ -505,7 +639,7 @@ public partial class MainWindow : Window
         await RunOperationAsync(async token =>
         {
             SetOperationStatus("Отправляю текст в активное поле телефона…");
-            var result = await _adb.SendTextAsync(device.Serial, text, token);
+            var result = await _devicesService.SendTextAsync(device.Serial, text, token);
             if (!result.IsSuccess)
                 throw new InvalidOperationException(result.BestMessage);
             SetOperationStatus("Текст отправлен ✓");
@@ -519,7 +653,7 @@ public partial class MainWindow : Window
             return;
         await RunOperationAsync(async token =>
         {
-            var result = await _adb.TogglePowerAsync(device.Serial, token);
+            var result = await _devicesService.TogglePowerAsync(device.Serial, token);
             if (!result.IsSuccess)
                 throw new InvalidOperationException(result.BestMessage);
             SetOperationStatus("Команда экрана отправлена ✓");
@@ -528,8 +662,11 @@ public partial class MainWindow : Window
 
     private void MtpButton_Click(object sender, RoutedEventArgs e)
     {
-        Process.Start(new ProcessStartInfo("explorer.exe", "shell:MyComputerFolder") { UseShellExecute = true });
-        SetOperationStatus("Открыт «Этот компьютер» — выберите Android-устройство");
+        var device = RequireOnlineDevice();
+        if (device is null)
+            return;
+        var result = _desktop.OpenMtpDevice(device);
+        SetOperationStatus(result.BestMessage, !result.IsSuccess);
     }
 
     private async Task RunOperationAsync(Func<CancellationToken, Task> operation)
@@ -553,16 +690,50 @@ public partial class MainWindow : Window
         finally
         {
             _operationInProgress = false;
+            UpdateCompanionUi(_activeDevice);
         }
+    }
+
+    private void UpdateCompanionUi(AndroidDevice? device)
+    {
+        var installed = device?.CompanionState == CompanionInstallationState.Installed;
+        var connected = device?.IsCompanionConnected == true;
+        var notificationAccess = device?.CompanionNotificationAccess == true;
+        var online = device?.State == DeviceConnectionState.Online;
+        CompanionButtonText.Text = !installed ? "Компаньон" : connected ? "Открыть" : "Сопрячь";
+        CompanionButton.IsEnabled = online && !_operationInProgress &&
+                                    (installed || _companion.IsInstallerAvailable);
+        CompanionButton.ToolTip = installed
+            ? connected
+                ? "Открыть Android Widget Companion и настройки доступа"
+                : "Создать код и ссылку сопряжения"
+            : _companion.IsInstallerAvailable
+                ? "Установить компаньон только после подтверждения"
+                : "APK компаньона не входит в эту сборку";
+        CompanionStatusText.Text = connected && notificationAccess
+            ? "Компаньон сопряжён · уведомления включены"
+            : connected
+                ? "Компаньон сопряжён · разрешите доступ к уведомлениям на телефоне"
+            : installed
+                ? "Компаньон установлен · нажмите «Сопрячь»"
+            : device is null
+                ? "Companion-функции отключены: телефон не подключён"
+                : device.CompanionState == CompanionInstallationState.Unknown
+                    ? "Companion-функции отключены: статус установки не определён"
+                : !_companion.IsInstallerAvailable
+                    ? "Companion-функции отключены: установщик не входит в сборку"
+                    : "Компаньон не установлен · companion-функции отключены";
     }
 
     private void SetOperationStatus(string message, bool isError = false)
     {
         StatusText.Text = message;
         PanelStatusText.Text = message;
-        var color = isError ? Color.FromRgb(255, 126, 126) : Color.FromRgb(132, 145, 178);
-        StatusText.Foreground = new SolidColorBrush(color);
-        PanelStatusText.Foreground = new SolidColorBrush(color);
+        var brush = isError
+            ? (Brush)FindResource("DangerText")
+            : (Brush)FindResource("TextSecondary");
+        StatusText.Foreground = brush;
+        PanelStatusText.Foreground = brush;
     }
 
     private void KeepWindowOnScreen()
@@ -576,24 +747,30 @@ public partial class MainWindow : Window
 
     private void RestoreSettings()
     {
-        var settings = SettingsService.Current;
+        var settings = _settings.Current;
         Topmost = settings.Topmost;
         PinButton.Foreground = new SolidColorBrush(Topmost ? Color.FromRgb(138, 115, 255) : Color.FromRgb(120, 132, 163));
         var workArea = SystemParameters.WorkArea;
+        Width = Math.Clamp(settings.MainCardWidth ?? CompactWidth, CompactMinWidth,
+            Math.Max(CompactMinWidth, Math.Min(MaxWidth, workArea.Width)));
+        Height = Math.Clamp(settings.MainCardHeight ?? CompactHeight, MinHeight,
+            Math.Max(MinHeight, Math.Min(MaxHeight, workArea.Height)));
         Left = settings.Left is double left && left >= workArea.Left && left < workArea.Right - 80
-            ? left : workArea.Right - CompactWidth - 30;
+            ? left : workArea.Right - Width - 30;
         Top = settings.Top is double top && top >= workArea.Top && top < workArea.Bottom - 80
             ? top : workArea.Bottom - Height - 40;
     }
 
-    private void SaveSettings(string? screenshotFolder = null)
+    private void SaveSettings()
     {
-        SettingsService.Update(settings => settings with
+        _settings.Update(settings => settings with
         {
             Left = Left,
             Top = Top,
             Topmost = Topmost,
-            ScreenshotFolder = screenshotFolder ?? settings.ScreenshotFolder
+            MainCardWidth = Math.Clamp(_menuOpen ? Width - ExpandedPanelSpace : Width,
+                CompactMinWidth, MaxWidth),
+            MainCardHeight = Math.Clamp(Height, MinHeight, MaxHeight)
         });
     }
 }

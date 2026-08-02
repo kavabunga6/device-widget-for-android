@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Android Widget Companion</string>
+    <string name="notification_access_label">Android Widget notifications</string>
+    <string name="connection_channel">Связь с компьютером</string>
+</resources>

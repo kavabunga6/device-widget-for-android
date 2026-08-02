@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\AndroidWidget.CompanionHost\AndroidWidget.CompanionHost.csproj" />
+    <ProjectReference Include="..\..\src\AndroidWidget.Protocol\AndroidWidget.Protocol.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="client.mjs" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

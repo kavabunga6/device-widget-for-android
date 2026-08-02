@@ -1,0 +1,65 @@
+<Window x:Class="AndroidWidget.CompanionPairingWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Сопряжение Android Widget Companion"
+        Icon="{StaticResource AppIconImage}"
+        Width="570" Height="390" MinWidth="500" MinHeight="350"
+        WindowStartupLocation="CenterOwner" ResizeMode="CanResizeWithGrip"
+        Background="{DynamicResource WindowSurface}">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock Text="Сопряжение с телефоном" FontSize="23" FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextPrimary}" />
+            <TextBlock x:Name="DeviceText" Margin="0,5,0,0" FontSize="12"
+                       Foreground="{DynamicResource TextSecondary}" />
+        </StackPanel>
+
+        <Border Grid.Row="1" Margin="0,20,0,0" Padding="16" CornerRadius="14"
+                Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="110" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="Одноразовый код" FontSize="10"
+                               Foreground="{DynamicResource TextSecondary}" />
+                    <TextBlock x:Name="PairCodeText" Margin="0,4,0,0" FontSize="23"
+                               FontWeight="Bold" Foreground="{DynamicResource Accent}" />
+                </StackPanel>
+                <TextBox x:Name="PairingUriText" Grid.Column="1" Margin="14,0,0,0"
+                         IsReadOnly="True" TextWrapping="Wrap" VerticalContentAlignment="Center"
+                         Background="{DynamicResource MutedSurfaceBrush}" Foreground="{DynamicResource TextPrimary}"
+                         BorderBrush="{DynamicResource BorderBrush}" Padding="10" />
+            </Grid>
+        </Border>
+
+        <TextBlock x:Name="StatusText" Grid.Row="2" Margin="2,14,2,0" TextWrapping="Wrap"
+                   Foreground="{DynamicResource TextSecondary}" />
+
+        <Border Grid.Row="3" Margin="0,16,0,0" Padding="14" CornerRadius="12"
+                Background="{DynamicResource SurfaceBrush}">
+            <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}">
+                На телефоне разрешите доступ к уведомлениям в Android Widget Companion. Без этого разрешения
+                SMS и уведомления останутся отключены. Код действует пять минут и используется один раз.
+            </TextBlock>
+        </Border>
+
+        <StackPanel Grid.Row="4" Margin="0,18,0,0" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Копировать ссылку" Padding="14,8" Margin="0,0,8,0"
+                    Click="CopyButton_Click" />
+            <Button Content="Открыть на телефоне" Padding="14,8" Margin="0,0,8,0"
+                    Click="OpenOnPhoneButton_Click" />
+            <Button Content="Готово" Padding="18,8" IsDefault="True" Click="CloseButton_Click" />
+        </StackPanel>
+    </Grid>
+</Window>

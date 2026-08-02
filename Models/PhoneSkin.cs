@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Media;
+using AndroidWidget.Core.Devices;
 
 namespace AndroidWidget.Models;
 
