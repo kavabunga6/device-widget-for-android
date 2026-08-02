@@ -1,0 +1,36 @@
+# .NET build output
+bin/
+obj/
+artifacts/
+TestResults/
+
+# IDE and user-specific files
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Local application state and diagnostics
+settings.json
+widget.log
+*.log
+
+# Locally extracted tools and packages
+tools/
+publish/
+*.nupkg
+*.snupkg
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Temporary and backup files
+*.tmp
+*.bak
+*.swp
+*~

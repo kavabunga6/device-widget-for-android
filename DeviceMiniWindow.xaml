@@ -1,0 +1,162 @@
+<Window x:Class="AndroidWidget.DeviceMiniWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="152" Height="112" MinWidth="152" MinHeight="112"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True">
+    <Border x:Name="Card" Margin="3" CornerRadius="20"
+            Background="{DynamicResource WindowSurface}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1.2"
+            Cursor="Hand" AllowDrop="True"
+            DragEnter="Card_DragEnter" DragLeave="Card_DragLeave" Drop="Card_Drop"
+            PreviewMouseLeftButtonDown="Card_MouseLeftButtonDown"
+            PreviewMouseMove="Card_MouseMove"
+            PreviewMouseLeftButtonUp="Card_MouseLeftButtonUp">
+        <Border.ContextMenu>
+            <ContextMenu x:Name="ActionMenu" Opened="ActionMenu_Opening"
+                         Background="Transparent" BorderThickness="0"
+                         HasDropShadow="False">
+                <ContextMenu.Resources>
+                    <Style TargetType="MenuItem">
+                        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+                        <Setter Property="Background" Value="Transparent" />
+                        <Setter Property="FontFamily" Value="Segoe UI" />
+                        <Setter Property="FontSize" Value="12" />
+                        <Setter Property="Padding" Value="12,8" />
+                        <Setter Property="Margin" Value="0,1" />
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="MenuItem">
+                                    <Border x:Name="ItemBorder" Background="{TemplateBinding Background}"
+                                            CornerRadius="8" Padding="{TemplateBinding Padding}">
+                                        <ContentPresenter ContentSource="Header" RecognizesAccessKey="True"
+                                                          VerticalAlignment="Center" />
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsHighlighted" Value="True">
+                                            <Setter TargetName="ItemBorder" Property="Background"
+                                                    Value="{DynamicResource SurfaceHoverBrush}" />
+                                        </Trigger>
+                                        <Trigger Property="IsEnabled" Value="False">
+                                            <Setter Property="Opacity" Value="0.38" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                    <Style TargetType="Separator">
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="Separator">
+                                    <Border Height="1" Margin="7,5" Background="{DynamicResource BorderBrush}" />
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ContextMenu.Resources>
+                <ContextMenu.Template>
+                    <ControlTemplate TargetType="ContextMenu">
+                        <Border Background="{DynamicResource WindowSurface}"
+                                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                                CornerRadius="13" Padding="6" MinWidth="210">
+                            <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
+                        </Border>
+                    </ControlTemplate>
+                </ContextMenu.Template>
+
+                <MenuItem Header="Открыть карточку" FontWeight="SemiBold" Click="ExpandMenuItem_Click" />
+                <Separator />
+                <MenuItem x:Name="ScreenMenuItem" Header="Трансляция экрана" Click="ScreenMenuItem_Click" />
+                <MenuItem x:Name="FilesMenuItem" Header="Файлы и фотографии" Click="FilesMenuItem_Click" />
+                <MenuItem x:Name="ScreenshotMenuItem" Header="Сделать скриншот…" Click="ScreenshotMenuItem_Click" />
+                <MenuItem x:Name="InstallMenuItem" Header="Установить APK…" Click="InstallMenuItem_Click" />
+                <MenuItem x:Name="PowerMenuItem" Header="Включить или выключить экран" Click="PowerMenuItem_Click" />
+                <Separator />
+                <MenuItem Header="Настройки" Click="SettingsMenuItem_Click" />
+            </ContextMenu>
+        </Border.ContextMenu>
+        <Grid Margin="11">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="48" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border x:Name="MiniPhoneBody" Width="42" Height="72" CornerRadius="12" HorizontalAlignment="Left"
+                    Background="{DynamicResource PhoneShellBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                <Grid Margin="4">
+                    <Border x:Name="MiniPhoneScreen" CornerRadius="8" Background="{DynamicResource ScreenBackground}"
+                            BorderBrush="{DynamicResource ScreenBorderBrush}" BorderThickness="1">
+                        <Grid>
+                            <Border x:Name="MiniCameraCutout" Width="4" Height="4" CornerRadius="2"
+                                    Background="#080A0E" HorizontalAlignment="Center" VerticalAlignment="Top"
+                                    Margin="0,3,0,0" Panel.ZIndex="4" IsHitTestVisible="False" />
+                            <Grid Width="20" Height="30" VerticalAlignment="Center">
+                                <Rectangle x:Name="MiniSkinFrame" Width="18" Height="28" RadiusX="5" RadiusY="5"
+                                           Fill="#242B49" Stroke="#806AF4" StrokeThickness="1.2" />
+                                <Rectangle Width="11" Height="17" RadiusX="2" RadiusY="2"
+                                           Fill="#111729" VerticalAlignment="Top" Margin="0,5,0,0" />
+                                <Border x:Name="MiniSkinHomeBar" Width="6" Height="2" CornerRadius="1" Background="#806AF4"
+                                        VerticalAlignment="Bottom" Margin="0,0,0,3" />
+                            </Grid>
+                            <Grid x:Name="PowerIcon" Width="27" Height="27" Visibility="Collapsed"
+                                  HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Ellipse Width="21" Height="21" Stroke="#F04444" StrokeThickness="3"
+                                         VerticalAlignment="Bottom" />
+                                <Border Width="4" Height="13" CornerRadius="2" Background="#F04444"
+                                        VerticalAlignment="Top" />
+                                <Border Width="8" Height="6" Background="{DynamicResource ScreenBackground}"
+                                        VerticalAlignment="Top" Margin="0,8,0,0" />
+                            </Grid>
+                            <Viewbox x:Name="LockIcon" Width="29" Height="29" Visibility="Collapsed"
+                                     HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Canvas Width="64" Height="64">
+                                    <Path Data="M 17,30 L 17,22 C 17,8 47,8 47,22 L 47,30"
+                                          Stroke="#F04444" StrokeThickness="6"
+                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                                    <Border Canvas.Left="7" Canvas.Top="27" Width="50" Height="34"
+                                            CornerRadius="7" Background="Transparent"
+                                            BorderBrush="#F04444" BorderThickness="5" />
+                                    <Ellipse Canvas.Left="28" Canvas.Top="39" Width="8" Height="8"
+                                             Fill="#F04444" />
+                                    <Rectangle Canvas.Left="30" Canvas.Top="44" Width="4" Height="8"
+                                               RadiusX="2" RadiusY="2" Fill="#F04444" />
+                                </Canvas>
+                            </Viewbox>
+                            <Border x:Name="AuthorizationIcon" Width="29" Height="29" CornerRadius="15"
+                                    Visibility="Collapsed" Background="#E62A1D08"
+                                    BorderBrush="#FFB84D" BorderThickness="1.5"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock Text="!" Foreground="#FFB84D" FontSize="21" FontWeight="Bold"
+                                           TextAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <Ellipse x:Name="StatusDot" Width="8" Height="8" Fill="#69738E"
+                                     Stroke="{DynamicResource WindowSurface}" StrokeThickness="1.5"
+                                     HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,3,3" />
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <StackPanel Grid.Column="1" Margin="9,5,0,0">
+                <TextBlock x:Name="DeviceNameText" Text="Android" FontSize="12" FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextPrimary}" TextTrimming="CharacterEllipsis" />
+                <TextBlock x:Name="ConnectionText" Text="USB / ADB" Margin="0,3,0,0" FontSize="9.5"
+                           Foreground="{DynamicResource TextSecondary}" TextTrimming="CharacterEllipsis" />
+                <TextBlock x:Name="DetailText" Text="Нажмите, чтобы открыть" Margin="0,8,0,0" FontSize="8.5"
+                           Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" MaxHeight="28" />
+            </StackPanel>
+
+            <Border x:Name="DropOverlay" Grid.ColumnSpan="2" Visibility="Collapsed" CornerRadius="15"
+                    Background="#EB5E4BE0" BorderBrush="#927CFF" BorderThickness="2">
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="↓" Foreground="White" FontSize="30" TextAlignment="Center" />
+                    <TextBlock Text="Отпустите файл" Foreground="White" FontSize="10"
+                               FontWeight="SemiBold" TextAlignment="Center" />
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

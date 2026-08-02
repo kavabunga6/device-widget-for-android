@@ -1,0 +1,15 @@
+* text=auto
+
+*.cs text eol=lf
+*.csproj text eol=lf
+*.xaml text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+*.ico binary
+*.png binary
+*.zip binary
+*.dll binary
+*.exe binary

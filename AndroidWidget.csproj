@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net6.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>AndroidWidget</AssemblyName>
+    <RootNamespace>AndroidWidget</RootNamespace>
+    <ApplicationIcon Condition="Exists('Assets\app.ico')">Assets\app.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="vendor\scrcpy-win64-v4.0.zip"
+                      LogicalName="AndroidWidget.Bundled.scrcpy-win64-v4.0.zip" />
+    <EmbeddedResource Include="vendor\scrcpy-LICENSE.txt"
+                      LogicalName="AndroidWidget.Bundled.scrcpy-LICENSE.txt" />
+  </ItemGroup>
+
+</Project>
