@@ -225,7 +225,14 @@ public sealed partial class MainWindow : Window
 
     private void PhoneShell_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        var point = e.GetCurrentPoint(this);
+        if (_miniMode && point.Properties.IsRightButtonPressed)
+        {
+            MiniContent.ContextMenu?.Open(MiniContent);
+            e.Handled = true;
+            return;
+        }
+        if (point.Properties.IsLeftButtonPressed)
         {
             BeginMoveDrag(e);
             e.Handled = true;
@@ -500,7 +507,33 @@ public sealed partial class MainWindow : Window
     {
         if (SelectedAdbDevice() is not { } device)
             return;
-        new RemoteFilesWindow(_adb, device.Serial).Show(this);
+        try
+        {
+            new RemoteFilesWindow(_adb, device.Serial).Show(this);
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"Не удалось открыть файлы телефона: {ex.Message}", true);
+        }
+    }
+
+    private async void SendFilesButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (SelectedAdbDevice() is null)
+            return;
+        try
+        {
+            var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "Отправить на Android",
+                AllowMultiple = true
+            });
+            QueuePaths(files.Select(file => file.Path.LocalPath), false);
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"Не удалось выбрать файлы: {ex.Message}", true);
+        }
     }
 
     private void TransfersButton_Click(object? sender, RoutedEventArgs e)

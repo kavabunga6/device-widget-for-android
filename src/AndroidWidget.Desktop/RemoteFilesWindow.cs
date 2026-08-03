@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Platform;
 using Avalonia.Platform.Storage;
 
 namespace AndroidWidget.Desktop;
@@ -21,7 +22,8 @@ internal sealed class RemoteFilesWindow : Window
         _adb = adb;
         _serial = serial;
         Title = "Файлы телефона";
-        Icon = new WindowIcon("avares://DeviceWidget/Assets/AppIcon.png");
+        using var iconStream = AssetLoader.Open(new Uri("avares://DeviceWidget/Assets/AppIcon.png"));
+        Icon = new WindowIcon(iconStream);
         Width = 620;
         Height = 560;
         MinWidth = 440;

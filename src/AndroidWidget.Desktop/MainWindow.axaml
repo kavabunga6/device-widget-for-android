@@ -59,8 +59,17 @@
                            Foreground="{DynamicResource Secondary}" VerticalAlignment="Center" />
                 <Button Grid.Column="1" Classes="chrome" Content="−" FontSize="22"
                         ToolTip.Tip="Мини-виджет" Click="MiniModeButton_Click" />
-                <Button Grid.Column="2" Classes="chrome" Content="⚙" FontSize="20"
-                        ToolTip.Tip="Настройки" Click="SettingsButton_Click" />
+                <Button Grid.Column="2" Classes="chrome" ToolTip.Tip="Настройки" Click="SettingsButton_Click">
+                  <Viewbox Width="14" Height="14">
+                    <Canvas Width="20" Height="20">
+                      <Path Data="M 8,1.5 L 12,1.5 L 12.6,3.6 L 14.1,4.2 L 16,3.1 L 17.9,5 L 16.8,6.9 L 17.4,8.4 L 19.5,9 L 19.5,11 L 17.4,11.6 L 16.8,13.1 L 17.9,15 L 16,16.9 L 14.1,15.8 L 12.6,16.4 L 12,18.5 L 8,18.5 L 7.4,16.4 L 5.9,15.8 L 4,16.9 L 2.1,15 L 3.2,13.1 L 2.6,11.6 L 0.5,11 L 0.5,9 L 2.6,8.4 L 3.2,6.9 L 2.1,5 L 4,3.1 L 5.9,4.2 L 7.4,3.6 Z"
+                            Fill="Transparent" Stroke="{DynamicResource Secondary}" StrokeThickness="1.5"
+                            StrokeJoin="Round" />
+                      <Ellipse Canvas.Left="7" Canvas.Top="7" Width="6" Height="6"
+                               Fill="Transparent" Stroke="{DynamicResource Secondary}" StrokeThickness="1.5" />
+                    </Canvas>
+                  </Viewbox>
+                </Button>
                 <Button x:Name="PinButton" Grid.Column="3" Classes="chrome" Content="●" FontSize="17"
                         Foreground="{DynamicResource Accent}" ToolTip.Tip="Поверх остальных окон"
                         Click="PinButton_Click" />
@@ -103,7 +112,7 @@
                         HorizontalAlignment="Center" HorizontalContentAlignment="Center"
                         VerticalContentAlignment="Center"
                         Background="{DynamicResource MutedSurface}" BorderBrush="{DynamicResource Border}"
-                        Click="FilesButton_Click">
+                        Click="SendFilesButton_Click">
                   <TextBlock x:Name="DropHintText" Text="Перетащите файл или APK" FontSize="9.5"
                              Foreground="{DynamicResource Primary}" />
                 </Button>
