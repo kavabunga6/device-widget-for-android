@@ -281,19 +281,6 @@
               </Button>
             </UniformGrid>
 
-            <Border x:Name="WirelessPanel" IsVisible="False" Margin="3,9,3,3" Padding="10"
-                    CornerRadius="12" Background="{DynamicResource MutedSurface}">
-              <StackPanel>
-                <TextBlock Text="Wireless debugging" FontWeight="SemiBold" Foreground="{DynamicResource Primary}" />
-                <TextBox x:Name="WirelessEndpointText" Classes="compact" Margin="0,7,0,0" PlaceholderText="host:port" />
-                <Grid Margin="0,6,0,0" ColumnDefinitions="*,Auto">
-                  <TextBox x:Name="WirelessCodeText" Classes="compact" PlaceholderText="6 цифр" MaxLength="6" />
-                  <Button Grid.Column="1" Classes="compact" Margin="6,0,0,0" Content="Сопрячь" Click="WirelessPairButton_Click" />
-                </Grid>
-                <Button Classes="compact" Margin="0,6,0,0" Content="Подключить" Click="WirelessConnectButton_Click" />
-              </StackPanel>
-            </Border>
-
           </StackPanel>
         </ScrollViewer>
 

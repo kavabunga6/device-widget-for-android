@@ -750,30 +750,20 @@ public sealed partial class MainWindow : Window
 
     private void WirelessButton_Click(object? sender, RoutedEventArgs e)
     {
-        WirelessPanel.IsVisible = !WirelessPanel.IsVisible;
+        ToggleDrawer(false);
+        var window = new WirelessAdbWindow(_runtime) { Topmost = Topmost };
+        window.ShowDialog(this);
+        window.Activate();
     }
 
     private void CompanionButton_Click(object? sender, RoutedEventArgs e)
     {
-        WirelessPanel.IsVisible = false;
         if (SelectedAdbDevice() is not { } device)
             return;
         ToggleDrawer(false);
         var window = new CompanionWindow(_runtime, device.Serial, device.Name) { Topmost = Topmost };
         window.ShowDialog(this);
         window.Activate();
-    }
-
-    private async void WirelessPairButton_Click(object? sender, RoutedEventArgs e) =>
-        await RunAdbOperationAsync(token => _adb.PairAsync(WirelessEndpointText.Text ?? string.Empty,
-                WirelessCodeText.Text ?? string.Empty, token),
-            result => result.IsSuccess ? "Wireless debugging сопряжён ✓" : result.Message);
-
-    private async void WirelessConnectButton_Click(object? sender, RoutedEventArgs e)
-    {
-        await RunAdbOperationAsync(token => _adb.ConnectAsync(WirelessEndpointText.Text ?? string.Empty, token),
-            result => result.IsSuccess ? "Wi-Fi ADB подключён ✓" : result.Message);
-        await RefreshAdbAsync();
     }
 
     private AdbDeviceChoice? SelectedAdbDevice(bool showError = true)
