@@ -41,6 +41,9 @@ internal sealed class PairingStore
     public string? GetClientTag(string installationId) =>
         _clientTags.TryGetValue(installationId, out var clientTag) ? clientTag : null;
 
+    public bool HasClientTag(string clientTag) =>
+        _clientTags.Values.Contains(clientTag, StringComparer.Ordinal);
+
     public async Task<string> PairAsync(string installationId, string? clientTag,
         CancellationToken cancellationToken)
     {

@@ -38,6 +38,8 @@ public sealed class CompanionHostService : IAsyncDisposable
 
     public IReadOnlyCollection<CompanionDeviceState> Devices => _devices.Values.ToArray();
 
+    public bool HasPairingForClient(string clientTag) => _pairings.HasClientTag(clientTag);
+
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
         if (_application is not null)

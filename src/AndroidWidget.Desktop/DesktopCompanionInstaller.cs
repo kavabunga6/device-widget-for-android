@@ -45,8 +45,11 @@ internal sealed class DesktopCompanionInstaller(PortableAdbService adb)
 
     public Task<PortableCommandResult> OpenPairingAsync(string serial, string uri, CancellationToken token) =>
         adb.RunDeviceAsync(serial,
-            ["shell", "am", "start", "-W", "-a", "android.intent.action.VIEW", "-d", uri,
+            ["shell", "am", "start", "-W", "-a", "android.intent.action.VIEW", "-d",
+                QuoteForRemoteShell(uri),
                 "-n", $"{PackageName}/.MainActivity"], token);
+
+    internal static string QuoteForRemoteShell(string value) => $"'{value.Replace("'", "'\\''")}'";
 
     private static string ExtractApk()
     {

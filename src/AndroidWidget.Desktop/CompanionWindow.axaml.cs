@@ -16,6 +16,8 @@ internal sealed partial class CompanionWindow : Window
     private readonly string _serial;
     private readonly CancellationTokenSource _lifetime = new();
     private DesktopCompanionState _state = DesktopCompanionState.Unknown;
+    private bool _paired;
+    private bool _connected;
     private bool _busy;
 
     public CompanionWindow(DesktopRuntime runtime, string serial, string deviceName)
@@ -25,9 +27,8 @@ internal sealed partial class CompanionWindow : Window
         InitializeComponent();
         VersionText.Text = ProductVersion.ProductLabel;
         DeviceNameText.Text = deviceName;
-        HostStatusText.Text = runtime.HostError is null
-            ? $"Защищённый локальный host · порт {ProtocolConstants.DefaultPort}"
-            : $"Ошибка host: {runtime.HostError}";
+        RefreshPairingState();
+        RenderHostStatus();
         _runtime.CompanionDeviceChanged += Runtime_CompanionDeviceChanged;
         Opened += Window_Opened;
         Closed += Window_Closed;
@@ -54,6 +55,7 @@ internal sealed partial class CompanionWindow : Window
         {
             SetBusy(true, "Проверяю компаньон…");
             _state = await _runtime.Companion.GetStateAsync(_serial, _lifetime.Token);
+            RefreshPairingState();
             RenderState();
             SetStatus(string.Empty);
         }
@@ -77,7 +79,9 @@ internal sealed partial class CompanionWindow : Window
         var available = _runtime.Companion.IsAvailable;
         CompanionStateText.Text = _state switch
         {
-            DesktopCompanionState.Installed => "Установлен · готов к запуску",
+            DesktopCompanionState.Installed when _connected => "Сопряжён · подключён",
+            DesktopCompanionState.Installed when _paired => "Сопряжён · ожидает подключения",
+            DesktopCompanionState.Installed => "Установлен · требуется сопряжение",
             DesktopCompanionState.UpdateAvailable => "Доступно обновление",
             DesktopCompanionState.NotInstalled => "Не установлен на телефоне",
             DesktopCompanionState.Unavailable => "Недоступен в этой сборке",
@@ -87,7 +91,8 @@ internal sealed partial class CompanionWindow : Window
             ? "APK отсутствует"
             : _state switch
             {
-                DesktopCompanionState.Installed => "Открыть",
+                DesktopCompanionState.Installed when _paired => "Открыть",
+                DesktopCompanionState.Installed => "Сопрячь",
                 DesktopCompanionState.UpdateAvailable => "Обновить",
                 _ => "Установить"
             };
@@ -102,14 +107,38 @@ internal sealed partial class CompanionWindow : Window
             return;
         try
         {
-            SetBusy(true, _state == DesktopCompanionState.Installed
-                ? "Открываю компаньон…"
-                : "Устанавливаю компаньон с разрешения пользователя…");
-            var result = _state == DesktopCompanionState.Installed
-                ? await _runtime.Companion.LaunchAsync(_serial, _lifetime.Token)
-                : await _runtime.Companion.InstallOrUpdateAsync(_serial, _lifetime.Token);
-            SetStatus(result.IsSuccess ? "Компаньон открыт на телефоне ✓" : result.Message, !result.IsSuccess);
+            var requiresPairing = _state == DesktopCompanionState.Installed && !_paired;
+            var pairingOpened = requiresPairing;
+            SetBusy(true, requiresPairing
+                ? "Создаю ссылку сопряжения…"
+                : _state == DesktopCompanionState.Installed
+                    ? "Открываю компаньон…"
+                    : "Устанавливаю компаньон с разрешения пользователя…");
+            var result = requiresPairing
+                ? await CreateAndOpenPairingAsync()
+                : _state == DesktopCompanionState.Installed
+                    ? await _runtime.Companion.LaunchAsync(_serial, _lifetime.Token)
+                    : await _runtime.Companion.InstallOrUpdateAsync(_serial, _lifetime.Token);
             _state = await _runtime.Companion.GetStateAsync(_serial, _lifetime.Token);
+            if (result.IsSuccess && _state == DesktopCompanionState.Installed && !pairingOpened && !_connected)
+            {
+                if (_paired)
+                {
+                    SetStatus("Ожидаю подключение по сохранённому сопряжению…");
+                    await WaitForCompanionConnectionAsync(TimeSpan.FromSeconds(2));
+                }
+                if (!_connected)
+                {
+                    SetStatus("Сохранённое сопряжение не ответило · создаю новую ссылку…");
+                    pairingOpened = true;
+                    result = await CreateAndOpenPairingAsync();
+                }
+            }
+            SetStatus(result.IsSuccess
+                ? pairingOpened
+                    ? "Ссылка сопряжения открыта в компаньоне ✓"
+                    : "Компаньон открыт на телефоне ✓"
+                : result.Message, !result.IsSuccess);
             RenderState();
         }
         catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
@@ -132,17 +161,7 @@ internal sealed partial class CompanionWindow : Window
         try
         {
             SetBusy(true, "Создаю одноразовый код…");
-            var pairing = _runtime.Host.CreatePairingSession(_serial, "127.0.0.1");
-            PairCodeText.Text = $"{pairing.Code[..3]} {pairing.Code[3..]}";
-            PairingUriText.Text = pairing.Uri;
-            CopyPairingButton.IsEnabled = true;
-            PairingHintText.Text = $"Код действует до {pairing.ExpiresAt.ToLocalTime():HH:mm:ss}";
-
-            var reverse = await _runtime.Companion.PrepareReverseAsync(_serial,
-                ProtocolConstants.DefaultPort, _lifetime.Token);
-            var opened = reverse.IsSuccess
-                ? await _runtime.Companion.OpenPairingAsync(_serial, pairing.Uri, _lifetime.Token)
-                : reverse;
+            var opened = await CreateAndOpenPairingAsync();
             SetStatus(opened.IsSuccess
                 ? "Ссылка открыта в компаньоне на телефоне ✓"
                 : $"Не удалось открыть на телефоне: {opened.Message}", !opened.IsSuccess);
@@ -174,10 +193,57 @@ internal sealed partial class CompanionWindow : Window
             return;
         Dispatcher.UIThread.Post(() =>
         {
-            HostStatusText.Text = state.IsConnected
-                ? "Компаньон сопряжён · уведомления включены"
-                : "Компаньон не подключён";
+            _paired = true;
+            _connected = state.IsConnected;
+            RenderHostStatus();
+            RenderState();
         });
+    }
+
+    private async Task<PortableCommandResult> CreateAndOpenPairingAsync()
+    {
+        if (_runtime.HostError is not null)
+            return new PortableCommandResult(1, "", $"Локальный companion-host недоступен: {_runtime.HostError}");
+
+        var pairing = _runtime.Host.CreatePairingSession(_serial, "127.0.0.1");
+        PairCodeText.Text = $"{pairing.Code[..3]} {pairing.Code[3..]}";
+        PairingUriText.Text = pairing.Uri;
+        CopyPairingButton.IsEnabled = true;
+        PairingHintText.Text = $"Код действует до {pairing.ExpiresAt.ToLocalTime():HH:mm:ss}";
+
+        var reverse = await _runtime.Companion.PrepareReverseAsync(_serial,
+            ProtocolConstants.DefaultPort, _lifetime.Token);
+        return reverse.IsSuccess
+            ? await _runtime.Companion.OpenPairingAsync(_serial, pairing.Uri, _lifetime.Token)
+            : reverse;
+    }
+
+    private async Task WaitForCompanionConnectionAsync(TimeSpan timeout)
+    {
+        var expiresAt = DateTimeOffset.UtcNow.Add(timeout);
+        while (!_connected && DateTimeOffset.UtcNow < expiresAt)
+            await Task.Delay(TimeSpan.FromMilliseconds(100), _lifetime.Token);
+    }
+
+    private void RefreshPairingState()
+    {
+        _paired = _runtime.Host.HasPairingForClient(_serial);
+        _connected = _runtime.Host.Devices.Any(device =>
+            device.IsConnected && string.Equals(device.ClientTag, _serial, StringComparison.Ordinal));
+    }
+
+    private void RenderHostStatus()
+    {
+        HostStatusText.Foreground = new SolidColorBrush(_runtime.HostError is not null
+            ? Color.FromRgb(255, 120, 120)
+            : Color.FromRgb(114, 216, 162));
+        HostStatusText.Text = _runtime.HostError is not null
+            ? $"Ошибка host: {_runtime.HostError}"
+            : _connected
+                ? "Компаньон сопряжён · уведомления включены"
+                : _paired
+                    ? "Компаньон сопряжён · ожидает подключения"
+                    : $"Защищённый локальный host · порт {ProtocolConstants.DefaultPort}";
     }
 
     private void SetBusy(bool busy, string? status = null)
