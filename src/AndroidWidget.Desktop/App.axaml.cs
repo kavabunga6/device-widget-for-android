@@ -117,7 +117,7 @@ public sealed partial class App : Application
     {
         if (_runtime is null)
             return;
-        var settings = new SettingsWindow(_runtime.Settings);
+        var settings = new SettingsWindow(_runtime.Settings) { Topmost = _runtime.Settings.Current.Topmost };
         settings.Show();
         settings.Activate();
     }

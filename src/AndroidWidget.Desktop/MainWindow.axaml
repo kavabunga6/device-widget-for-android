@@ -131,7 +131,8 @@
             </Grid>
 
             <Grid x:Name="MiniContent" IsVisible="False" Margin="10,13,10,12"
-                  RowDefinitions="38,30,*,30" PointerPressed="MiniContent_PointerPressed">
+                  RowDefinitions="38,30,*,30" PointerPressed="MiniContent_PointerPressed"
+                  PointerMoved="MiniContent_PointerMoved" PointerReleased="MiniContent_PointerReleased">
               <Grid.ContextMenu>
                 <ContextMenu>
                   <MenuItem Header="Развернуть" Click="RestoreFromMiniMenu_Click" />

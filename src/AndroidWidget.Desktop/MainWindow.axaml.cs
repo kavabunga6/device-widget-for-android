@@ -33,6 +33,9 @@ public sealed partial class MainWindow : Window
     private bool _drawerOpen;
     private bool _drawerOnLeft;
     private bool _miniMode;
+    private bool _miniPointerDown;
+    private PixelPoint _miniPointerStart;
+    private PixelPoint _miniWindowStart;
     private PixelPoint? _miniReturnPosition;
     private AdbDeviceChoice? _activeDevice;
 
@@ -52,6 +55,8 @@ public sealed partial class MainWindow : Window
         _boundSerial = device.Serial;
         _activeDevice = AdbDeviceChoice.From(device);
         InitializeComponent();
+        PhoneShell.AddHandler(PointerPressedEvent, PhoneShell_RightPointerPressed,
+            RoutingStrategies.Tunnel, handledEventsToo: true);
         ApplySettings();
         _settings.Changed += Settings_Changed;
         ProductVersionText.Text = ProductVersion.ProductLabel;
@@ -226,17 +231,23 @@ public sealed partial class MainWindow : Window
     private void PhoneShell_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
         var point = e.GetCurrentPoint(this);
-        if (_miniMode && point.Properties.IsRightButtonPressed)
-        {
-            MiniContent.ContextMenu?.Open(MiniContent);
-            e.Handled = true;
-            return;
-        }
         if (point.Properties.IsLeftButtonPressed)
         {
             BeginMoveDrag(e);
             e.Handled = true;
         }
+    }
+
+    private void PhoneShell_RightPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!e.GetCurrentPoint(this).Properties.IsRightButtonPressed)
+            return;
+        Activate();
+        if (_miniMode)
+            MiniContent.ContextMenu?.Open(MiniContent);
+        else
+            ToggleDrawer(true);
+        e.Handled = true;
     }
 
     private void PhoneShell_DragOver(object? sender, DragEventArgs e)
@@ -306,9 +317,38 @@ public sealed partial class MainWindow : Window
         if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
             return;
         if (e.ClickCount >= 2)
+        {
+            _miniPointerDown = false;
+            e.Pointer.Capture(null);
             SetMiniMode(false);
+        }
         else
-            BeginMoveDrag(e);
+        {
+            _miniPointerDown = true;
+            _miniPointerStart = VisualExtensions.PointToScreen(this, e.GetPosition(this));
+            _miniWindowStart = Position;
+            e.Pointer.Capture(MiniContent);
+        }
+        e.Handled = true;
+    }
+
+    private void MiniContent_PointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_miniPointerDown || !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            return;
+        var current = VisualExtensions.PointToScreen(this, e.GetPosition(this));
+        Position = new PixelPoint(
+            _miniWindowStart.X + current.X - _miniPointerStart.X,
+            _miniWindowStart.Y + current.Y - _miniPointerStart.Y);
+        e.Handled = true;
+    }
+
+    private void MiniContent_PointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (!_miniPointerDown)
+            return;
+        _miniPointerDown = false;
+        e.Pointer.Capture(null);
         e.Handled = true;
     }
 
@@ -431,7 +471,7 @@ public sealed partial class MainWindow : Window
 
     internal void OpenSettings(bool owned = true)
     {
-        var window = new SettingsWindow(_settings);
+        var window = new SettingsWindow(_settings) { Topmost = Topmost };
         if (owned && IsVisible)
             window.ShowDialog(this);
         else
@@ -509,7 +549,9 @@ public sealed partial class MainWindow : Window
             return;
         try
         {
-            new RemoteFilesWindow(_adb, device.Serial).Show(this);
+            var window = new RemoteFilesWindow(_adb, device.Serial) { Topmost = Topmost };
+            window.Show(this);
+            window.Activate();
         }
         catch (Exception ex)
         {
@@ -538,8 +580,9 @@ public sealed partial class MainWindow : Window
 
     private void TransfersButton_Click(object? sender, RoutedEventArgs e)
     {
-        var window = new TransferQueueWindow(_runtime.Transfers, _boundSerial);
+        var window = new TransferQueueWindow(_runtime.Transfers, _boundSerial) { Topmost = Topmost };
         window.Show(this);
+        window.Activate();
     }
 
     private async void ScreenshotButton_Click(object? sender, RoutedEventArgs e)

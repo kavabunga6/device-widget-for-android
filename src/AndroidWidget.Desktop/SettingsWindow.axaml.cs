@@ -81,11 +81,19 @@ internal sealed partial class SettingsWindow : Window
         _store.Update(current => current with { ScreenshotFolder = folder.Path.LocalPath });
     }
 
-    private void MediaSettingsButton_Click(object? sender, RoutedEventArgs e) =>
-        new MediaSettingsWindow(_store).ShowDialog(this);
+    private void MediaSettingsButton_Click(object? sender, RoutedEventArgs e)
+    {
+        var window = new MediaSettingsWindow(_store) { Topmost = Topmost };
+        window.ShowDialog(this);
+        window.Activate();
+    }
 
-    private void LicensesButton_Click(object? sender, RoutedEventArgs e) =>
-        new LicensesWindow().ShowDialog(this);
+    private void LicensesButton_Click(object? sender, RoutedEventArgs e)
+    {
+        var window = new LicensesWindow { Topmost = Topmost };
+        window.ShowDialog(this);
+        window.Activate();
+    }
 
     private void CloseButton_Click(object? sender, RoutedEventArgs e) => Close();
 }
