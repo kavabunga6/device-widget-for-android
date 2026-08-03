@@ -294,28 +294,6 @@
               </StackPanel>
             </Border>
 
-            <Border x:Name="CompanionPanel" IsVisible="False" Margin="3,9,3,3" Padding="10"
-                    CornerRadius="12" Background="{DynamicResource MutedSurface}">
-              <StackPanel>
-                <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Text="Companion" FontWeight="SemiBold" Foreground="{DynamicResource Primary}" />
-                  <Button Grid.Column="1" Classes="compact" Content="Новый код" Click="PairButton_Click" />
-                </Grid>
-                <Button x:Name="CompanionInstallButton" Classes="compact" Margin="0,6,0,0"
-                        Content="Установить компаньон" Click="CompanionInstallButton_Click" />
-                <TextBlock x:Name="HostStatusText" Text="Запуск защищённого host…" Margin="0,5,0,0"
-                           FontSize="10" Foreground="#72D8A2" />
-                <TextBlock x:Name="PairCodeText" Text="—— ——" Margin="0,8,0,0" FontSize="22"
-                           FontWeight="Bold" Foreground="{DynamicResource Accent}" />
-                <TextBox x:Name="PairingUriText" Classes="compact" Margin="0,6,0,0" IsReadOnly="True"
-                         PlaceholderText="Одноразовая ссылка сопряжения" />
-                <Grid Margin="0,6,0,0" ColumnDefinitions="*,Auto">
-                  <TextBlock x:Name="PairingHintText" Text="Код действует пять минут" FontSize="9.5"
-                             Foreground="{DynamicResource Secondary}" VerticalAlignment="Center" />
-                  <Button Grid.Column="1" Classes="compact" Content="Копировать" Click="CopyPairingButton_Click" />
-                </Grid>
-              </StackPanel>
-            </Border>
           </StackPanel>
         </ScrollViewer>
 

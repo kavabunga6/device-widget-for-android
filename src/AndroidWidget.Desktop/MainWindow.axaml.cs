@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using AndroidWidget.CompanionHost;
 using AndroidWidget.Core;
-using AndroidWidget.Protocol;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -22,7 +21,6 @@ public sealed partial class MainWindow : Window
     private const double DrawerWidth = 326;
     private const double NotificationWidth = 292;
     private readonly DesktopRuntime _runtime;
-    private readonly CompanionHostService _host;
     private readonly PortableAdbService _adb;
     private readonly DesktopSettingsStore _settings;
     private readonly string _boundSerial;
@@ -52,7 +50,6 @@ public sealed partial class MainWindow : Window
     internal MainWindow(DesktopRuntime runtime, PortableAdbDevice device)
     {
         _runtime = runtime;
-        _host = runtime.Host;
         _adb = runtime.Adb;
         _settings = runtime.Settings;
         _boundSerial = device.Serial;
@@ -65,24 +62,19 @@ public sealed partial class MainWindow : Window
         ApplySettings();
         _settings.Changed += Settings_Changed;
         ProductVersionText.Text = ProductVersion.ProductLabel;
-        _host.DeviceChanged += HandleCompanionDeviceChanged;
-        _host.NotificationReceived += HandleNotification;
+        _runtime.NotificationReceived += HandleNotification;
         _runtime.Transfers.Changed += Transfers_Changed;
         _runtime.PhotoDetected += Runtime_PhotoDetected;
         _adb.RecordingEnded += Adb_RecordingEnded;
         Opened += (_, _) =>
         {
-            HostStatusText.Text = runtime.HostError is null
-                ? $"Защищённый host · {ProtocolConstants.DefaultPort}"
-                : $"Ошибка host: {runtime.HostError}";
             ApplySelectedDevice();
         };
         Closed += (_, _) =>
         {
             _adbOperation?.Cancel();
             _settings.Changed -= Settings_Changed;
-            _host.DeviceChanged -= HandleCompanionDeviceChanged;
-            _host.NotificationReceived -= HandleNotification;
+            _runtime.NotificationReceived -= HandleNotification;
             _runtime.Transfers.Changed -= Transfers_Changed;
             _runtime.PhotoDetected -= Runtime_PhotoDetected;
             _adb.RecordingEnded -= Adb_RecordingEnded;
@@ -758,42 +750,18 @@ public sealed partial class MainWindow : Window
 
     private void WirelessButton_Click(object? sender, RoutedEventArgs e)
     {
-        CompanionPanel.IsVisible = false;
         WirelessPanel.IsVisible = !WirelessPanel.IsVisible;
     }
 
-    private async void CompanionButton_Click(object? sender, RoutedEventArgs e)
+    private void CompanionButton_Click(object? sender, RoutedEventArgs e)
     {
         WirelessPanel.IsVisible = false;
-        CompanionPanel.IsVisible = !CompanionPanel.IsVisible;
-        if (!CompanionPanel.IsVisible || SelectedAdbDevice(false) is not { } device)
-            return;
-        var state = await _runtime.Companion.GetStateAsync(device.Serial, CancellationToken.None);
-        var installerAvailable = _runtime.Companion.IsAvailable;
-        CompanionInstallButton.IsEnabled = installerAvailable || state == DesktopCompanionState.Installed;
-        CompanionInstallButton.Content = !installerAvailable && state != DesktopCompanionState.Installed
-            ? "APK не входит в сборку"
-            : state switch
-            {
-                DesktopCompanionState.UpdateAvailable => "Обновить компаньон",
-                DesktopCompanionState.Installed => "Открыть компаньон",
-                _ => "Установить компаньон"
-            };
-    }
-
-    private async void CompanionInstallButton_Click(object? sender, RoutedEventArgs e)
-    {
         if (SelectedAdbDevice() is not { } device)
             return;
-        var state = await _runtime.Companion.GetStateAsync(device.Serial, CancellationToken.None);
-        await RunAdbOperationAsync(token => state == DesktopCompanionState.Installed
-                ? _runtime.Companion.LaunchAsync(device.Serial, token)
-                : _runtime.Companion.InstallOrUpdateAsync(device.Serial, token),
-            result => result.IsSuccess ? "Компаньон открыт ✓" : result.Message);
-        var updated = await _runtime.Companion.GetStateAsync(device.Serial, CancellationToken.None);
-        CompanionInstallButton.Content = updated == DesktopCompanionState.Installed
-            ? "Открыть компаньон"
-            : updated == DesktopCompanionState.UpdateAvailable ? "Обновить компаньон" : "Установить компаньон";
+        ToggleDrawer(false);
+        var window = new CompanionWindow(_runtime, device.Serial, device.Name) { Topmost = Topmost };
+        window.ShowDialog(this);
+        window.Activate();
     }
 
     private async void WirelessPairButton_Click(object? sender, RoutedEventArgs e) =>
@@ -806,35 +774,6 @@ public sealed partial class MainWindow : Window
         await RunAdbOperationAsync(token => _adb.ConnectAsync(WirelessEndpointText.Text ?? string.Empty, token),
             result => result.IsSuccess ? "Wi-Fi ADB подключён ✓" : result.Message);
         await RefreshAdbAsync();
-    }
-
-    private async void PairButton_Click(object? sender, RoutedEventArgs e)
-    {
-        if (SelectedAdbDevice() is not { } device)
-            return;
-        var pairing = _host.CreatePairingSession(_boundSerial, "127.0.0.1");
-        PairCodeText.Text = $"{pairing.Code[..3]} {pairing.Code[3..]}";
-        PairingUriText.Text = pairing.Uri;
-        PairingHintText.Text = $"Действует до {pairing.ExpiresAt.ToLocalTime():HH:mm:ss}";
-        var reverse = await _runtime.Companion.PrepareReverseAsync(device.Serial, ProtocolConstants.DefaultPort,
-            CancellationToken.None);
-        var opened = reverse.IsSuccess
-            ? await _runtime.Companion.OpenPairingAsync(device.Serial, pairing.Uri, CancellationToken.None)
-            : reverse;
-        if (!opened.IsSuccess)
-            PairingHintText.Text = $"Не удалось открыть на телефоне: {opened.Message}";
-    }
-
-    private async void CopyPairingButton_Click(object? sender, RoutedEventArgs e)
-    {
-        if (string.IsNullOrWhiteSpace(PairingUriText.Text))
-            return;
-        var clipboard = GetTopLevel(this)?.Clipboard;
-        if (clipboard is not null)
-        {
-            await clipboard.SetTextAsync(PairingUriText.Text);
-            PairingHintText.Text = "Ссылка скопирована";
-        }
     }
 
     private AdbDeviceChoice? SelectedAdbDevice(bool showError = true)
@@ -876,16 +815,6 @@ public sealed partial class MainWindow : Window
         StatusText.Foreground = new SolidColorBrush(color);
         PanelStatusText.Foreground = new SolidColorBrush(color);
     }
-
-    private void HandleCompanionDeviceChanged(object? sender, CompanionDeviceState state) =>
-        Dispatcher.UIThread.Post(() =>
-        {
-            if (!string.Equals(state.ClientTag, _boundSerial, StringComparison.Ordinal))
-                return;
-            HostStatusText.Text = state.IsConnected
-                ? "Компаньон сопряжён · уведомления включены"
-                : "Компаньон не подключён";
-        });
 
     private void HandleNotification(object? sender, CompanionNotification received) =>
         Dispatcher.UIThread.Post(() =>
