@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -14,6 +15,7 @@ public sealed partial class App : Application
     private DesktopRuntime? _runtime;
     private TrayIcon? _trayIcon;
     private IClassicDesktopStyleApplicationLifetime? _desktop;
+    private bool _exitRequested;
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
@@ -84,7 +86,7 @@ public sealed partial class App : Application
         }));
         menu.Items.Add(CreateMenuItem("Настройки", (_, _) => ShowSettings()));
         menu.Items.Add(new NativeMenuItemSeparator());
-        menu.Items.Add(CreateMenuItem("Выход", (_, _) => ExitApplication()));
+        menu.Items.Add(CreateMenuItem("Выход", (_, _) => RequestExitApplication()));
 
         using var iconStream = AssetLoader.Open(new Uri("avares://DeviceWidget/Assets/AppIcon.png"));
         _trayIcon = new TrayIcon
@@ -122,20 +124,49 @@ public sealed partial class App : Application
         settings.Activate();
     }
 
-    private void ExitApplication()
+    private void RequestExitApplication()
     {
-        foreach (var window in _windows.Values.ToList())
-            window.CloseForExit();
-        _windows.Clear();
-        DisposeTrayIcon();
-        if (_runtime is not null)
-            _runtime.DisposeAsync().AsTask().GetAwaiter().GetResult();
-        _desktop?.Shutdown();
+        if (_exitRequested)
+            return;
+        _exitRequested = true;
+        _ = ExitAfterTrayMenuDismissalAsync();
+    }
+
+    private async Task ExitAfterTrayMenuDismissalAsync()
+    {
+        // Native tray menus dismiss after their click callback returns. Keeping the
+        // dispatcher alive briefly prevents an orphaned popup on every desktop OS.
+        await Task.Delay(TimeSpan.FromMilliseconds(150));
+        try
+        {
+            DisposeTrayIcon();
+            foreach (var window in _windows.Values.ToList())
+                window.CloseForExit();
+            _windows.Clear();
+            if (_runtime is not null)
+            {
+                _runtime.DevicesChanged -= Runtime_DevicesChanged;
+                await _runtime.DisposeAsync();
+                _runtime = null;
+            }
+        }
+        catch (Exception exception)
+        {
+            Trace.WriteLine($"Device Widget shutdown cleanup failed: {exception}");
+        }
+        finally
+        {
+            _desktop?.Shutdown();
+        }
     }
 
     private void DisposeTrayIcon()
     {
-        _trayIcon?.Dispose();
+        if (_trayIcon is null)
+            return;
+        _trayIcon.IsVisible = false;
+        _trayIcon.Menu = null;
+        _trayIcon.Dispose();
         _trayIcon = null;
     }
 }
