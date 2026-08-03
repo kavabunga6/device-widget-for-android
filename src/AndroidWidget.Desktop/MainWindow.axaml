@@ -96,11 +96,9 @@
                 <TextBlock x:Name="ConnectionText" Text="ADB"
                            FontSize="10.5" Foreground="{DynamicResource Secondary}"
                            TextAlignment="Center" TextWrapping="Wrap" MaxHeight="30" />
-                <Grid x:Name="BatteryPanel" Margin="16,13,16,0" ColumnDefinitions="*,Auto">
-                  <ProgressBar x:Name="BatteryBar" Height="5" Minimum="0" Maximum="100" Value="0"
-                               Foreground="#72D8A2" Background="#3C424D" VerticalAlignment="Center" />
-                  <TextBlock x:Name="BatteryText" Grid.Column="1" Text="—" Margin="9,0,0,0"
-                             FontSize="10" Foreground="{DynamicResource Secondary}" />
+                <Grid x:Name="BatteryPanel" Margin="16,11,16,0">
+                  <TextBlock x:Name="BatteryText" Text="—" FontSize="14" FontWeight="SemiBold"
+                             Foreground="{DynamicResource Primary}" HorizontalAlignment="Center" />
                 </Grid>
                 <Button Margin="0,14,0,0" Width="184" Height="34" Padding="8,0" Classes="compact"
                         HorizontalAlignment="Center" HorizontalContentAlignment="Center"
@@ -140,9 +138,14 @@
                          TextTrimming="CharacterEllipsis" MaxHeight="34" />
               <TextBlock x:Name="MiniConnectionText" Grid.Row="1" Text="USB / ADB" FontSize="9"
                          Foreground="{DynamicResource Secondary}" TextAlignment="Center" TextWrapping="Wrap" />
-              <TextBlock x:Name="MiniBatteryText" Grid.Row="2" Text="—" FontSize="22"
-                         FontWeight="SemiBold" Foreground="{DynamicResource Primary}"
-                         TextAlignment="Center" VerticalAlignment="Center" />
+              <Grid Grid.Row="2">
+                <TextBlock x:Name="MiniBatteryText" Text="—" FontSize="22"
+                           FontWeight="SemiBold" Foreground="{DynamicResource Primary}"
+                           TextAlignment="Center" VerticalAlignment="Center" />
+                <TextBlock x:Name="MiniStateText" IsVisible="False" FontSize="22"
+                           FontWeight="SemiBold" Foreground="{DynamicResource Error}"
+                           TextAlignment="Center" VerticalAlignment="Center" />
+              </Grid>
               <TextBlock x:Name="MiniDetailText" Grid.Row="3" Text="Ожидаю устройство" FontSize="9"
                          FontWeight="SemiBold" Foreground="{DynamicResource Secondary}"
                          TextAlignment="Center" TextWrapping="Wrap" VerticalAlignment="Center" />

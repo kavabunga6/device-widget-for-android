@@ -130,13 +130,13 @@ public sealed partial class MainWindow : Window
             DeviceNameText.Text = "Устройство не найдено";
             ConnectionText.Text = "Подключите USB и разрешите отладку";
             BatteryText.Text = "—";
-            BatteryBar.Value = 0;
             BatteryPanel.IsVisible = false;
             DropHintText.Text = "Ожидаю Android по ADB";
             MiniDeviceNameText.Text = "Android";
             MiniConnectionText.Text = "ADB не подключён";
             MiniBatteryText.Text = "—";
-            MiniBatteryText.Foreground = new SolidColorBrush(Color.FromRgb(242, 244, 250));
+            MiniBatteryText.IsVisible = true;
+            MiniStateText.IsVisible = false;
             MiniDetailText.Text = "Ожидаю устройство";
             MiniStatusDot.Fill = new SolidColorBrush(Color.FromRgb(105, 115, 142));
             return;
@@ -155,20 +155,14 @@ public sealed partial class MainWindow : Window
                                   : $" · Android {device.AndroidVersion}");
         BatteryText.Text = device.BatteryPercent is int battery ? $"{battery}%" : "—";
         BatteryPanel.IsVisible = device.BatteryPercent is not null;
-        BatteryBar.Value = device.BatteryPercent ?? 0;
-        BatteryBar.Foreground = new SolidColorBrush(device.BatteryPercent switch
-        {
-            < 20 => Color.FromRgb(255, 105, 105),
-            < 45 => Color.FromRgb(255, 190, 92),
-            _ => Color.FromRgb(114, 216, 162)
-        });
         DropHintText.Text = "Отправить файл или APK";
         MiniDeviceNameText.Text = device.Name;
         MiniConnectionText.Text = device.Wireless ? "Wi-Fi / ADB" : "USB / ADB";
-        MiniBatteryText.Text = !device.Authorized || device.Locked ? "🔒" : !device.ScreenOn ? "⏻" : BatteryText.Text;
-        MiniBatteryText.Foreground = new SolidColorBrush(!device.Authorized || device.Locked || !device.ScreenOn
-            ? Color.FromRgb(255, 92, 92)
-            : Color.FromRgb(242, 244, 250));
+        var showState = !device.Authorized || device.Locked || !device.ScreenOn;
+        MiniBatteryText.Text = BatteryText.Text;
+        MiniBatteryText.IsVisible = !showState;
+        MiniStateText.Text = !device.Authorized || device.Locked ? "🔒" : "⏻";
+        MiniStateText.IsVisible = showState;
         MiniDetailText.Text = !device.Authorized ? "Разрешите USB-отладку"
             : device.Locked ? "Телефон заблокирован"
             : !device.ScreenOn ? "Экран выключен"
