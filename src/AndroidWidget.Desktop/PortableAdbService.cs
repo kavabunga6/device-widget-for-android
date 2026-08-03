@@ -18,11 +18,15 @@ internal sealed record PortableRemoteEntry(string Name, string Path, bool IsDire
 {
     public override string ToString() => IsDirectory ? $"📁 {Name}" : $"📄 {Name}";
 }
+internal sealed record PortableRecordingEnded(string Serial, string OutputPath, bool Saved, bool StoppedByUser);
 
 internal sealed class PortableAdbService
 {
-    private readonly Dictionary<string, Process> _recordings = new(StringComparer.Ordinal);
+    private readonly object _recordingGate = new();
+    private readonly Dictionary<string, ActiveRecording> _recordings = new(StringComparer.Ordinal);
     private readonly DesktopToolResolver _tools = new();
+
+    public event EventHandler<PortableRecordingEnded>? RecordingEnded;
 
     public async Task<IReadOnlyList<PortableAdbDevice>> GetDevicesAsync(CancellationToken cancellationToken)
     {
@@ -151,6 +155,7 @@ internal sealed class PortableAdbService
             var info = new ProcessStartInfo(_tools.Scrcpy)
             {
                 UseShellExecute = false,
+                CreateNoWindow = true,
                 WorkingDirectory = Path.GetDirectoryName(Path.GetFullPath(_tools.Scrcpy))
             };
             info.ArgumentList.Add("--serial");
@@ -159,12 +164,34 @@ internal sealed class PortableAdbService
                 info.ArgumentList.Add(argument);
             if (recordingPath is not null)
                 info.ArgumentList.Add($"--record={Path.GetFullPath(recordingPath)}");
+            if (recordingPath is not null)
+            {
+                ActiveRecording? stale = null;
+                lock (_recordingGate)
+                {
+                    if (_recordings.TryGetValue(serial, out var active))
+                    {
+                        if (!active.Process.HasExited)
+                            return new PortableCommandResult(1, "", "Запись для этого устройства уже запущена.");
+                        stale = active;
+                    }
+                }
+                if (stale is not null)
+                {
+                    CompleteRecording(stale);
+                    stale.Process.Dispose();
+                }
+            }
+
             var process = Process.Start(info);
             if (recordingPath is not null && process is not null)
             {
-                if (_recordings.Remove(serial, out var previous))
-                    previous.Dispose();
-                _recordings[serial] = process;
+                var fullPath = Path.GetFullPath(recordingPath);
+                var recording = new ActiveRecording(serial, fullPath, process);
+                lock (_recordingGate)
+                    _recordings[serial] = recording;
+                process.EnableRaisingEvents = true;
+                process.Exited += (_, _) => RecordingProcessExited(recording);
             }
             return new PortableCommandResult(0, recordingPath ?? "scrcpy запущен", "");
         }
@@ -174,29 +201,72 @@ internal sealed class PortableAdbService
         }
     }
 
-    public bool IsRecording(string serial) =>
-        _recordings.TryGetValue(serial, out var process) && !process.HasExited;
+    public bool IsRecording(string serial)
+    {
+        lock (_recordingGate)
+            return _recordings.TryGetValue(serial, out var recording) && !recording.Process.HasExited;
+    }
 
     public PortableCommandResult StopRecording(string serial)
     {
-        if (!_recordings.Remove(serial, out var process))
-            return new PortableCommandResult(1, "", "Активная запись не найдена.");
+        ActiveRecording? recording;
+        lock (_recordingGate)
+        {
+            if (!_recordings.TryGetValue(serial, out recording) || recording.Process.HasExited)
+                return new PortableCommandResult(1, "", "Запись уже завершена.");
+            recording.StoppedByUser = true;
+            recording.StopInProgress = true;
+        }
+
         try
         {
+            var process = recording.Process;
             if (!process.HasExited)
             {
                 process.CloseMainWindow();
                 if (!process.WaitForExit(3000))
+                {
                     process.Kill(true);
+                    process.WaitForExit(3000);
+                }
             }
-            process.Dispose();
+            CompleteRecording(recording);
             return new PortableCommandResult(0, "Запись сохранена", "");
         }
         catch (Exception ex)
         {
-            process.Dispose();
+            CompleteRecording(recording);
             return new PortableCommandResult(1, "", ex.Message);
         }
+        finally
+        {
+            recording.Process.Dispose();
+        }
+    }
+
+    private void RecordingProcessExited(ActiveRecording recording)
+    {
+        lock (_recordingGate)
+        {
+            if (recording.StopInProgress)
+                return;
+        }
+        CompleteRecording(recording);
+        recording.Process.Dispose();
+    }
+
+    private void CompleteRecording(ActiveRecording recording)
+    {
+        if (Interlocked.Exchange(ref recording.CompletionSignaled, 1) != 0)
+            return;
+        lock (_recordingGate)
+        {
+            if (_recordings.TryGetValue(recording.Serial, out var active) && ReferenceEquals(active, recording))
+                _recordings.Remove(recording.Serial);
+        }
+        var saved = File.Exists(recording.OutputPath) && new FileInfo(recording.OutputPath).Length > 0;
+        RecordingEnded?.Invoke(this,
+            new PortableRecordingEnded(recording.Serial, recording.OutputPath, saved, recording.StoppedByUser));
     }
 
     private static PortableAdbDevice? ParseDevice(string line)
@@ -354,5 +424,15 @@ internal sealed class PortableAdbService
     private static void TryKill(Process process)
     {
         try { process.Kill(true); } catch { }
+    }
+
+    private sealed class ActiveRecording(string serial, string outputPath, Process process)
+    {
+        public string Serial { get; } = serial;
+        public string OutputPath { get; } = outputPath;
+        public Process Process { get; } = process;
+        public bool StoppedByUser { get; set; }
+        public bool StopInProgress { get; set; }
+        public int CompletionSignaled;
     }
 }

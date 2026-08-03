@@ -13,6 +13,7 @@ internal sealed record DesktopSettings(
     bool NotifyNewPhotos,
     bool AutoImportPhotos,
     string PhotoImportFolder,
+    bool ShowScreenRecordingGuide,
     bool Topmost)
 {
     public static DesktopSettings Default => new(
@@ -26,6 +27,7 @@ internal sealed record DesktopSettings(
         true,
         false,
         DefaultFolder(Environment.SpecialFolder.MyPictures, "Device Widget Imports"),
+        true,
         true);
 
     private static string DefaultFolder(Environment.SpecialFolder folder, string child)
@@ -82,9 +84,14 @@ internal sealed class DesktopSettingsStore
     {
         try
         {
-            return File.Exists(path)
-                ? JsonSerializer.Deserialize<DesktopSettings>(File.ReadAllText(path)) ?? DesktopSettings.Default
-                : DesktopSettings.Default;
+            if (!File.Exists(path))
+                return DesktopSettings.Default;
+            var json = File.ReadAllText(path);
+            var settings = JsonSerializer.Deserialize<DesktopSettings>(json) ?? DesktopSettings.Default;
+            using var document = JsonDocument.Parse(json);
+            return document.RootElement.TryGetProperty(nameof(DesktopSettings.ShowScreenRecordingGuide), out _)
+                ? settings
+                : settings with { ShowScreenRecordingGuide = true };
         }
         catch
         {

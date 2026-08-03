@@ -1,0 +1,86 @@
+<Window x:Class="AndroidWidget.Desktop.ScreenRecordingWindow"
+        xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Запись экрана" Icon="/Assets/AppIcon.png" Width="520" Height="520"
+        CanResize="False" WindowStartupLocation="CenterOwner" Background="Transparent"
+        TransparencyLevelHint="Transparent" WindowDecorations="None">
+  <Window.Styles>
+    <Style Selector="Border.card">
+      <Setter Property="Padding" Value="16" />
+      <Setter Property="CornerRadius" Value="14" />
+      <Setter Property="Background" Value="{DynamicResource Surface}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Border}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Button.action">
+      <Setter Property="Height" Value="36" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Background" Value="{DynamicResource MutedSurface}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Border}" />
+      <Setter Property="Foreground" Value="{DynamicResource Primary}" />
+      <Setter Property="Padding" Value="14,0" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+  </Window.Styles>
+
+  <Border CornerRadius="18" Background="{DynamicResource WindowSurface}"
+          BorderBrush="{DynamicResource Border}" BorderThickness="1">
+    <Grid RowDefinitions="44,*">
+      <Grid Margin="14,0,10,0" ColumnDefinitions="Auto,*,Auto" PointerPressed="TitleBar_PointerPressed">
+        <Border Width="22" Height="28" CornerRadius="7" BorderBrush="#C34755"
+                BorderThickness="1.4" VerticalAlignment="Center">
+          <TextBlock Text="●" Foreground="#C34755" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+        <StackPanel Grid.Column="1" Margin="8,7,0,0">
+          <TextBlock Text="Запись экрана" FontSize="11" Foreground="{DynamicResource Primary}" />
+          <TextBlock Text="Device Widget" FontSize="9" Foreground="{DynamicResource Secondary}" />
+        </StackPanel>
+        <Button Grid.Column="2" Width="34" Height="34" Padding="0" CornerRadius="17"
+                HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                Background="{DynamicResource MutedSurface}" Click="CancelButton_Click">
+          <Viewbox Width="12" Height="12"><Canvas Width="12" Height="12"><Path Data="M 1.5,1.5 L 10.5,10.5 M 10.5,1.5 L 1.5,10.5" Stroke="{DynamicResource Primary}" StrokeThickness="1.8" StrokeLineCap="Round" /></Canvas></Viewbox>
+        </Button>
+      </Grid>
+
+      <Grid Grid.Row="1" Margin="22,14,22,22" RowDefinitions="Auto,Auto,Auto,*,Auto">
+        <StackPanel>
+          <TextBlock Text="Начать запись экрана?" FontSize="23" FontWeight="SemiBold"
+                     Foreground="{DynamicResource Primary}" />
+          <TextBlock x:Name="DeviceNameText" Margin="0,4,0,0" Foreground="{DynamicResource Secondary}" />
+        </StackPanel>
+
+        <Border Grid.Row="1" Classes="card" Margin="0,18,0,0">
+          <StackPanel Spacing="8">
+            <TextBlock Text="После нажатия «Начать запись»" FontWeight="SemiBold"
+                       Foreground="{DynamicResource Primary}" />
+            <TextBlock Text="1. Запись начнётся сразу, и откроется окно scrcpy с экраном телефона."
+                       TextWrapping="Wrap" Foreground="{DynamicResource Secondary}" />
+            <TextBlock Text="2. Для завершения нажмите красную кнопку «Остановить» в меню действий."
+                       TextWrapping="Wrap" Foreground="{DynamicResource Secondary}" />
+            <TextBlock Text="3. Если закрыть окно scrcpy, запись тоже завершится, а виджет покажет сохранённый файл."
+                       TextWrapping="Wrap" Foreground="{DynamicResource Secondary}" />
+            <CheckBox x:Name="DoNotShowAgainCheck" Margin="0,6,0,0"
+                      Content="Больше не показывать этот диалог" />
+          </StackPanel>
+        </Border>
+
+        <StackPanel Grid.Row="2" Margin="2,14,2,0">
+          <TextBlock Text="Файл записи" FontSize="10" Foreground="{DynamicResource Secondary}" />
+          <TextBox x:Name="RecordingPathText" Margin="0,5,0,0" Height="36" Padding="10,0"
+                   VerticalContentAlignment="Center" IsReadOnly="True" />
+        </StackPanel>
+
+        <TextBlock Grid.Row="3" Margin="2,12,2,0" FontSize="10.5"
+                   Foreground="{DynamicResource Secondary}" TextWrapping="Wrap"
+                   Text="До нажатия кнопки ниже запись не запускается." />
+
+        <Grid Grid.Row="4" Margin="0,14,0,0" ColumnDefinitions="*,Auto,Auto">
+          <Button Grid.Column="1" Classes="action" Content="Отмена" Width="92"
+                  Margin="0,0,8,0" Click="CancelButton_Click" />
+          <Button Grid.Column="2" Classes="action" Content="Начать запись" Width="142"
+                  Background="#C34755" Foreground="White" Click="StartButton_Click" />
+        </Grid>
+      </Grid>
+    </Grid>
+  </Border>
+</Window>

@@ -4,6 +4,7 @@ using AndroidWidget.Core;
 using AndroidWidget.Protocol;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
@@ -18,8 +19,8 @@ public sealed partial class MainWindow : Window
 {
     private const double PhoneWindowWidth = 258;
     private const double PhoneWindowHeight = 392;
-    private const double DrawerWindowWidth = 584;
-    private const double DrawerWindowHeight = 508;
+    private const double DrawerWidth = 326;
+    private const double NotificationWidth = 292;
     private readonly DesktopRuntime _runtime;
     private readonly CompanionHostService _host;
     private readonly PortableAdbService _adb;
@@ -30,9 +31,11 @@ public sealed partial class MainWindow : Window
     private readonly List<NotificationBubble> _notificationBubbles = [];
     private readonly Dictionary<Guid, CancellationTokenSource> _notificationTimers = [];
     private string? _recordingPath;
+    private bool _recordingUiActive;
     private bool _drawerOpen;
     private bool _drawerOnLeft;
     private bool _miniMode;
+    private bool _showLockOverlay;
     private bool _miniPointerDown;
     private PixelPoint _miniPointerStart;
     private PixelPoint _miniWindowStart;
@@ -55,6 +58,8 @@ public sealed partial class MainWindow : Window
         _boundSerial = device.Serial;
         _activeDevice = AdbDeviceChoice.From(device);
         InitializeComponent();
+        ActionDrawerPopup.PlacementTarget = PhoneShell;
+        NotificationPopup.PlacementTarget = PhoneShell;
         PhoneShell.AddHandler(PointerPressedEvent, PhoneShell_RightPointerPressed,
             RoutingStrategies.Tunnel, handledEventsToo: true);
         ApplySettings();
@@ -64,6 +69,7 @@ public sealed partial class MainWindow : Window
         _host.NotificationReceived += HandleNotification;
         _runtime.Transfers.Changed += Transfers_Changed;
         _runtime.PhotoDetected += Runtime_PhotoDetected;
+        _adb.RecordingEnded += Adb_RecordingEnded;
         Opened += (_, _) =>
         {
             HostStatusText.Text = runtime.HostError is null
@@ -79,6 +85,9 @@ public sealed partial class MainWindow : Window
             _host.NotificationReceived -= HandleNotification;
             _runtime.Transfers.Changed -= Transfers_Changed;
             _runtime.PhotoDetected -= Runtime_PhotoDetected;
+            _adb.RecordingEnded -= Adb_RecordingEnded;
+            ActionDrawerPopup.IsOpen = false;
+            NotificationPopup.IsOpen = false;
             foreach (var timer in _notificationTimers.Values)
             {
                 timer.Cancel();
@@ -131,6 +140,8 @@ public sealed partial class MainWindow : Window
         if (device is null)
         {
             StateOverlayText.IsVisible = false;
+            _showLockOverlay = false;
+            UpdateLockOverlays();
             DeviceIconBorder.Background = new SolidColorBrush(Color.FromRgb(48, 43, 80));
             DeviceNameText.Text = "Устройство не найдено";
             ConnectionText.Text = "Подключите USB и разрешите отладку";
@@ -148,6 +159,14 @@ public sealed partial class MainWindow : Window
         }
 
         DeviceNameText.Text = device.Name;
+        var showLock = !device.Authorized || device.Locked;
+        _showLockOverlay = showLock;
+        UpdateLockOverlays();
+        FullLockTitle.Text = device.Authorized ? "Телефон заблокирован" : "Требуется авторизация";
+        FullLockHint.Text = device.Authorized
+            ? "Разблокируйте устройство, чтобы продолжить"
+            : "Разрешите USB-отладку на телефоне";
+        MiniLockTitle.Text = device.Authorized ? "Заблокирован" : "Разрешите ADB";
         DeviceIconBorder.Background = new SolidColorBrush(!device.Authorized || device.Locked || !device.ScreenOn
             ? Color.FromRgb(19, 21, 27)
             : Color.FromRgb(48, 43, 80));
@@ -175,6 +194,7 @@ public sealed partial class MainWindow : Window
         MiniStatusDot.Fill = new SolidColorBrush(device.Authorized && device.ScreenOn && !device.Locked
             ? Color.FromRgb(78, 205, 132)
             : Color.FromRgb(255, 92, 92));
+        SetRecordingUi(_adb.IsRecording(device.Serial));
         SetStatus(!device.Authorized ? "Требуется авторизация ADB на телефоне"
             : device.Locked ? "Телефон заблокирован"
             : !device.ScreenOn ? "Экран телефона выключен"
@@ -191,24 +211,19 @@ public sealed partial class MainWindow : Window
 
         if (shouldOpen)
         {
-            var placement = GetExpansionPlacement(DrawerWindowWidth, DrawerWindowHeight);
-            _drawerOnLeft = placement.OpensLeft;
-            Grid.SetColumn(PhoneShell, _drawerOnLeft ? 1 : 0);
-            Grid.SetColumn(ActionDrawer, _drawerOnLeft ? 0 : 1);
+            _drawerOnLeft = ShouldOpenPopupOnLeft(DrawerWidth);
+            ActionDrawerPopup.Placement = _drawerOnLeft
+                ? PlacementMode.LeftEdgeAlignedTop
+                : PlacementMode.RightEdgeAlignedTop;
             _drawerOpen = true;
-            ActionDrawer.IsVisible = true;
-            SetWindowSize(DrawerWindowWidth, DrawerWindowHeight);
-            Position = ClampToWorkingArea(placement.Position, DrawerWindowWidth, DrawerWindowHeight);
+            ActionDrawerPopup.IsOpen = true;
+            RenderNotifications();
             return;
         }
 
-        var phonePosition = GetCurrentPhonePosition();
         _drawerOpen = false;
-        ActionDrawer.IsVisible = false;
-        Grid.SetColumn(PhoneShell, 0);
-        Grid.SetColumn(ActionDrawer, 1);
-        SetWindowSize(PhoneWindowWidth, PhoneWindowHeight);
-        Position = ClampToWorkingArea(phonePosition, PhoneWindowWidth, PhoneWindowHeight);
+        ActionDrawerPopup.IsOpen = false;
+        RenderNotifications();
     }
 
     private void DragHandle_PointerPressed(object? sender, PointerPressedEventArgs e)
@@ -370,7 +385,7 @@ public sealed partial class MainWindow : Window
         PixelPoint targetPosition;
         if (mini)
         {
-            targetPosition = _miniReturnPosition ?? GetCurrentPhonePosition();
+            targetPosition = _miniReturnPosition ?? Position;
         }
         else
         {
@@ -380,11 +395,10 @@ public sealed partial class MainWindow : Window
 
         _miniMode = mini;
         _drawerOpen = false;
-        ActionDrawer.IsVisible = false;
-        Grid.SetColumn(PhoneShell, 0);
-        Grid.SetColumn(ActionDrawer, 1);
+        ActionDrawerPopup.IsOpen = false;
         FullPhoneContent.IsVisible = !mini;
         MiniContent.IsVisible = mini;
+        UpdateLockOverlays();
         RootLayout.Margin = mini ? new Thickness(0) : new Thickness(4);
         PhoneShell.Margin = mini ? new Thickness(3) : new Thickness(4);
         PhoneShell.CornerRadius = mini ? new CornerRadius(24) : new CornerRadius(39);
@@ -395,6 +409,13 @@ public sealed partial class MainWindow : Window
             targetPosition,
             mini ? 120 : PhoneWindowWidth,
             mini ? 188 : PhoneWindowHeight);
+        RenderNotifications();
+    }
+
+    private void UpdateLockOverlays()
+    {
+        FullLockOverlay.IsVisible = _showLockOverlay && !_miniMode;
+        MiniLockOverlay.IsVisible = _showLockOverlay && _miniMode;
     }
 
     private void SetWindowSize(double width, double height)
@@ -438,14 +459,18 @@ public sealed partial class MainWindow : Window
         return (ClampToWorkingArea(new PixelPoint(x, y), targetWidth, targetHeight, screen), opensLeft);
     }
 
-    private PixelPoint GetCurrentPhonePosition()
+    private bool ShouldOpenPopupOnLeft(double popupWidth)
     {
-        var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
-        if (screen is null || !_drawerOpen || !_drawerOnLeft)
-            return Position;
+        var topLeft = VisualExtensions.PointToScreen(PhoneShell, new Point(0, 0));
+        var topRight = VisualExtensions.PointToScreen(PhoneShell, new Point(PhoneShell.Bounds.Width, 0));
+        var screen = Screens.ScreenFromPoint(topLeft) ?? Screens.ScreenFromWindow(this) ?? Screens.Primary;
+        if (screen is null)
+            return false;
 
-        var drawerPixels = (int)Math.Ceiling((DrawerWindowWidth - PhoneWindowWidth) * screen.Scaling);
-        return new PixelPoint(Position.X + drawerPixels, Position.Y);
+        var popupPixels = (int)Math.Ceiling(popupWidth * screen.Scaling);
+        var roomRight = screen.WorkingArea.Right - Math.Max(topLeft.X, topRight.X);
+        var roomLeft = Math.Min(topLeft.X, topRight.X) - screen.WorkingArea.X;
+        return roomRight < popupPixels && roomLeft > roomRight;
     }
 
     private PixelPoint ClampToWorkingArea(PixelPoint position, double width, double height) =>
@@ -502,6 +527,9 @@ public sealed partial class MainWindow : Window
 
     private void CloseButton_Click(object? sender, RoutedEventArgs e)
     {
+        _drawerOpen = false;
+        ActionDrawerPopup.IsOpen = false;
+        NotificationPopup.IsOpen = false;
         HideRequested?.Invoke(this, EventArgs.Empty);
         Hide();
     }
@@ -517,30 +545,110 @@ public sealed partial class MainWindow : Window
             !result.IsSuccess);
     }
 
-    private void RecordButton_Click(object? sender, RoutedEventArgs e)
+    private async void RecordButton_Click(object? sender, RoutedEventArgs e)
     {
         if (SelectedAdbDevice() is not { } device)
             return;
-        if (_adb.IsRecording(device.Serial))
+
+        if (_recordingUiActive)
         {
+            if (!_adb.IsRecording(device.Serial))
+            {
+                SetRecordingUi(false);
+                SetStatus("Запись уже завершена; новый запуск не выполнялся");
+                return;
+            }
+
+            RecordButton.IsEnabled = false;
+            SetStatus("Останавливаю запись…");
             var stopped = _adb.StopRecording(device.Serial);
-            RecordButtonText.Text = "Запись";
-            if (stopped.IsSuccess && _recordingPath is { } savedPath)
-                ShowNotification($"Видео сохранено: {Path.GetFileName(savedPath)} · нажмите, чтобы открыть",
-                    () => RevealPath(savedPath));
-            SetStatus(stopped.IsSuccess && _recordingPath is not null
-                ? $"Видео сохранено: {Path.GetFileName(_recordingPath)}"
-                : stopped.Message, !stopped.IsSuccess);
+            RecordButton.IsEnabled = true;
+            if (!stopped.IsSuccess)
+            {
+                SetRecordingUi(_adb.IsRecording(device.Serial));
+                SetStatus(stopped.Message, true);
+            }
             return;
         }
+
+        if (_adb.IsRecording(device.Serial))
+        {
+            SetRecordingUi(true);
+            SetStatus("Запись уже идёт · нажмите «Остановить» для завершения");
+            return;
+        }
+
         var folder = _settings.Current.RecordingFolder;
         Directory.CreateDirectory(folder);
         _recordingPath = Path.Combine(folder, $"Android_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.mkv");
+        if (_settings.Current.ShowScreenRecordingGuide)
+        {
+            var reopenActions = _drawerOpen;
+            if (reopenActions)
+            {
+                _drawerOpen = false;
+                ActionDrawerPopup.IsOpen = false;
+            }
+            NotificationPopup.IsOpen = false;
+            var guide = new ScreenRecordingWindow(_settings, device.Name, _recordingPath) { Topmost = Topmost };
+            var confirmed = await guide.ShowDialog<bool?>(this);
+            if (reopenActions)
+                ToggleDrawer(true);
+            else
+                RenderNotifications();
+            if (confirmed != true)
+            {
+                SetStatus("Запись отменена");
+                return;
+            }
+        }
+
         var result = _adb.StartScrcpy(device.Serial, _recordingPath, _settings.Current.ScrcpyPreset);
         if (result.IsSuccess)
-            RecordButtonText.Text = "Остановить";
-        SetStatus(result.IsSuccess ? "Идёт запись · нажмите ещё раз для остановки" : result.Message,
-            !result.IsSuccess);
+        {
+            SetRecordingUi(true);
+            ShowNotification("Запись началась · нажмите красную кнопку «Остановить» для сохранения");
+            SetStatus("Идёт запись · кнопка «Остановить» завершит и сохранит видео");
+        }
+        else
+        {
+            SetRecordingUi(false);
+            SetStatus(result.Message, true);
+        }
+    }
+
+    private void Adb_RecordingEnded(object? sender, PortableRecordingEnded ended) =>
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (!string.Equals(ended.Serial, _boundSerial, StringComparison.Ordinal))
+                return;
+            _recordingPath = ended.OutputPath;
+            SetRecordingUi(false);
+            if (ended.Saved)
+            {
+                var name = Path.GetFileName(ended.OutputPath);
+                ShowNotification($"Видео сохранено: {name} · нажмите, чтобы открыть",
+                    () => RevealPath(ended.OutputPath));
+                SetStatus($"Видео сохранено: {name}");
+            }
+            else
+            {
+                ShowNotification("Запись завершена, но видеофайл не найден");
+                SetStatus("Запись завершена, но видеофайл не найден", true);
+            }
+        });
+
+    private void SetRecordingUi(bool active)
+    {
+        _recordingUiActive = active;
+        RecordButtonText.Text = active ? "Остановить" : "Запись";
+        RecordIconText.Text = active ? "■" : "●";
+        RecordIconBorder.Background = new SolidColorBrush(active
+            ? Color.FromRgb(221, 75, 67)
+            : Color.FromRgb(195, 71, 85));
+        ToolTip.SetTip(RecordButton, active
+            ? "Остановить запись и сохранить MKV"
+            : "Начать запись экрана в MKV");
     }
 
     private void FilesButton_Click(object? sender, RoutedEventArgs e)
@@ -824,13 +932,24 @@ public sealed partial class MainWindow : Window
 
     private void RenderNotifications()
     {
-        FullBubblePanel.Children.Clear();
-        MiniBubblePanel.Children.Clear();
+        NotificationPopup.IsOpen = false;
+        ExternalBubblePanel.Children.Clear();
+        DrawerBubblePanel.Children.Clear();
+        if (_notificationBubbles.Count == 0)
+            return;
+
+        var target = _drawerOpen ? DrawerBubblePanel : ExternalBubblePanel;
         foreach (var bubble in _notificationBubbles)
-        {
-            FullBubblePanel.Children.Add(CreateBubble(bubble, false));
-            MiniBubblePanel.Children.Add(CreateBubble(bubble, true));
-        }
+            target.Children.Add(CreateBubble(bubble, _miniMode && !_drawerOpen));
+
+        if (_drawerOpen)
+            return;
+
+        NotificationBubbleHost.Width = _miniMode ? 220 : 280;
+        NotificationPopup.Placement = ShouldOpenPopupOnLeft(NotificationWidth)
+            ? PlacementMode.LeftEdgeAlignedTop
+            : PlacementMode.RightEdgeAlignedTop;
+        NotificationPopup.IsOpen = true;
     }
 
     private static Border CreateBubble(NotificationBubble bubble, bool compact)
