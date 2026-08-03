@@ -103,7 +103,6 @@ internal sealed class PairingStore
 
     private static void TryRestrictFilePermissions(string path)
     {
-#if NET8_0_OR_GREATER
         if (OperatingSystem.IsWindows())
             return;
         try
@@ -114,7 +113,6 @@ internal sealed class PairingStore
         {
             // The application data directory is still user-scoped on unsupported file systems.
         }
-#endif
     }
 
     private static FileStream CreatePrivateFile(string path)
@@ -125,10 +123,8 @@ internal sealed class PairingStore
             Access = FileAccess.Write,
             Share = FileShare.None
         };
-#if NET8_0_OR_GREATER
         if (!OperatingSystem.IsWindows())
             options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
-#endif
         return new FileStream(path, options);
     }
 }

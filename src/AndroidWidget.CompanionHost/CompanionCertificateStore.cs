@@ -41,13 +41,14 @@ internal sealed class CompanionCertificateStore
         Convert.ToHexString(SHA256.HashData(certificate.RawData)).ToLowerInvariant();
 
     private static X509Certificate2 LoadCertificate(string path) =>
-        new(File.ReadAllBytes(path), (string?)null, OperatingSystem.IsLinux()
-            ? X509KeyStorageFlags.EphemeralKeySet
-            : X509KeyStorageFlags.DefaultKeySet);
+        X509CertificateLoader.LoadPkcs12FromFile(path, (string?)null,
+            OperatingSystem.IsLinux()
+                ? X509KeyStorageFlags.EphemeralKeySet
+                : X509KeyStorageFlags.DefaultKeySet,
+            loaderLimits: null);
 
     private static void TryRestrictFilePermissions(string path)
     {
-#if NET8_0_OR_GREATER
         if (OperatingSystem.IsWindows())
             return;
         try
@@ -58,12 +59,10 @@ internal sealed class CompanionCertificateStore
         {
             // The application data directory is still user-scoped on unsupported file systems.
         }
-#endif
     }
 
     private static void WriteCertificate(string path, byte[] data)
     {
-#if NET8_0_OR_GREATER
         if (OperatingSystem.IsWindows())
         {
             File.WriteAllBytes(path, data);
@@ -77,8 +76,5 @@ internal sealed class CompanionCertificateStore
             UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite
         });
         stream.Write(data);
-#else
-        File.WriteAllBytes(path, data);
-#endif
     }
 }

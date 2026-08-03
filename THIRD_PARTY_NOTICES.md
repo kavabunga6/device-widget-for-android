@@ -39,8 +39,8 @@ in the scrcpy 4.0 corresponding source archive under `app/deps/ffmpeg.sh` and
 | SkiaSharp and native assets | 3.119.4 | MIT |
 | MicroCom.Runtime | 0.11.6 | MIT |
 | Tmds.DBus.Protocol | 0.94.1 | MIT |
-| System.IO.Pipelines | 8.0.0 | MIT |
-| .NET runtime redistributed by self-contained builds | 8.x | MIT and third-party notices |
+| System.IO.Pipelines | 10.0.10 | MIT |
+| .NET runtime redistributed by self-contained builds | 10.x | MIT and third-party notices |
 
 Relevant license texts and retained copyright notices are in `licenses/`:
 `Avalonia-MIT.txt`, `QRCoder-MIT.txt`, `MIT-components.txt`,

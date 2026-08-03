@@ -107,7 +107,7 @@ Desktop вычисляет каталог через `Environment.SpecialFolder.
 
 ## Сборка desktop
 
-Требуются .NET 10 SDK (компилятор для Avalonia 12) и .NET 8 runtime:
+Требуется .NET 10 SDK; все .NET-проекты и инструменты репозитория нацелены на .NET 10:
 
 ```powershell
 dotnet restore src/AndroidWidget.Desktop/AndroidWidget.Desktop.csproj
