@@ -8,8 +8,11 @@ on:
         required: true
         default: 0.1.6
   push:
+    branches:
+      - main
     tags:
       - "v*"
+  pull_request:
 
 permissions:
   contents: read
@@ -42,9 +45,12 @@ jobs:
         run: |
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             version="${GITHUB_REF_NAME#v}"
-          else
+          elif [[ -n "${{ inputs.version }}" ]]; then
             version="${{ inputs.version }}"
+          else
+            version="$(sed -n 's:.*<Version>\([^<]*\)</Version>.*:\1:p' Directory.Build.props | head -n 1)"
           fi
+          test -n "$version"
           echo "value=$version" >> "$GITHUB_OUTPUT"
 
       - name: Build and verify package
