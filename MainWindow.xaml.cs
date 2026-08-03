@@ -649,15 +649,14 @@ public partial class MainWindow : Window
         var device = RequireOnlineDevice();
         if (device is null)
             return;
-        var file = _recordings.CreateFilePath(device);
-        var result = _devicesService.StartScreenRecording(device.Serial, file, _settings.Current.ScrcpyPreset);
-        if (!result.IsSuccess)
+
+        var window = new ScreenRecordingWindow(device, _devicesService, _settings, _desktop, _recordings)
         {
-            SetOperationStatus(result.BestMessage, true);
-            return;
-        }
-        SetOperationStatus($"Запись начата: {Path.GetFileName(file)} · закройте окно scrcpy для завершения");
-        _desktop.OpenFolder(_recordings.Folder);
+            Owner = this
+        };
+        window.ShowDialog();
+        if (window.RecordingCompleted)
+            SetOperationStatus($"Запись сохранена: {Path.GetFileName(window.OutputPath)}");
     }
 
     private void TransfersButton_Click(object sender, RoutedEventArgs e) =>

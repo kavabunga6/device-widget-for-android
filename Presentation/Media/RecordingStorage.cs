@@ -15,7 +15,6 @@ public sealed class RecordingStorage
 
     public string CreateFilePath(AndroidDevice device)
     {
-        Directory.CreateDirectory(Folder);
         return Path.Combine(Folder,
             $"{Sanitize(device.DisplayName)}_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.mkv");
     }

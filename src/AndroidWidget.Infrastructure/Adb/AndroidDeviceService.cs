@@ -148,6 +148,10 @@ public sealed class AndroidDeviceService : IAndroidDeviceService
         ScrcpyPreset preset = ScrcpyPreset.Balanced) =>
         _screenMirroring.StartRecording(serial, localPath, preset);
 
+    public bool IsScreenRecording(string serial) => _screenMirroring.IsRecording(serial);
+
+    public OperationResult StopScreenRecording(string serial) => _screenMirroring.StopRecording(serial);
+
     public OperationResult StartShell(string serial)
     {
         if (!Regex.IsMatch(serial, "^[a-zA-Z0-9._:-]+$"))

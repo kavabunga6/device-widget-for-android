@@ -83,5 +83,7 @@ internal sealed class FakeDeviceService : IAndroidDeviceService
         throw new NotSupportedException();
     public OperationResult StartScreenRecording(string serial, string localPath,
         ScrcpyPreset preset = ScrcpyPreset.Balanced) => throw new NotSupportedException();
+    public bool IsScreenRecording(string serial) => false;
+    public OperationResult StopScreenRecording(string serial) => throw new NotSupportedException();
     public OperationResult StartShell(string serial) => throw new NotSupportedException();
 }

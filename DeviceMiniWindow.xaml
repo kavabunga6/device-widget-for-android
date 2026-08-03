@@ -75,7 +75,7 @@
                 <MenuItem x:Name="ScreenMenuItem" Header="Экран" Tag="&#xE7F4;" BorderBrush="#7559E8"
                           Click="ScreenMenuItem_Click" ToolTip="Трансляция через scrcpy" />
                 <MenuItem x:Name="RecordMenuItem" Header="Запись" Tag="&#xE714;" BorderBrush="#C34755"
-                          Click="RecordMenuItem_Click" ToolTip="Записать экран в MKV" />
+                          Click="RecordMenuItem_Click" ToolTip="Настроить и запустить запись экрана в MKV" />
                 <MenuItem x:Name="FilesMenuItem" Header="Файлы" Tag="&#xE8B7;" BorderBrush="#E59A27"
                           Click="FilesMenuItem_Click" ToolTip="Файлы и фотографии" />
                 <MenuItem Header="Передачи" Tag="&#xE896;" BorderBrush="#287D8E"

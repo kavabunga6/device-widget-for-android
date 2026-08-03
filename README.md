@@ -41,9 +41,9 @@ Companion не устанавливается автоматически. Уст
 |---|---|---|
 | ![Карточка устройства](docs/images/main-card.png) | ![Меню действий](docs/images/actions-menu.png) | ![Мини-виджет](docs/images/mini-widget.png) |
 
-| Основные настройки | Медиа и scrcpy |
-|---|---|
-| ![Основные настройки](docs/images/settings.png) | ![Настройки медиа и scrcpy](docs/images/media-settings.png) |
+| Основные настройки | Медиа и scrcpy | Запись экрана |
+|---|---|---|
+| ![Основные настройки](docs/images/settings.png) | ![Настройки медиа и scrcpy](docs/images/media-settings.png) | ![Запись экрана](docs/images/screen-recording.png) |
 
 | Очередь передач | Файлы и фотографии |
 |---|---|

@@ -238,16 +238,14 @@ public partial class DeviceMiniWindow : Window
 
     private void RecordMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        var file = _recordings.CreateFilePath(_device);
-        var result = _devices.StartScreenRecording(_device.Serial, file, _settings.Current.ScrcpyPreset);
-        if (!result.IsSuccess)
+        var window = new ScreenRecordingWindow(_device, _devices, _settings, _desktop, _recordings)
         {
-            ShowOperationBubble("Запись не начата", result.BestMessage, OperationBubbleState.Error);
-            return;
-        }
-        ShowOperationBubble("Запись экрана", $"{Path.GetFileName(file)} · закройте scrcpy для завершения",
-            OperationBubbleState.Success);
-        _desktop.OpenFolder(_recordings.Folder);
+            Owner = this
+        };
+        window.ShowDialog();
+        if (window.RecordingCompleted)
+            ShowOperationBubble("Запись сохранена", Path.GetFileName(window.OutputPath),
+                OperationBubbleState.Success);
     }
 
     private void TransfersMenuItem_Click(object sender, RoutedEventArgs e) =>

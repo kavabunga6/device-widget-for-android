@@ -65,6 +65,7 @@ internal static class Program
                 companion, coordinator);
             CaptureSettings(output, settings, screenshots, recordings, imports);
             CaptureMediaSettings(output, settings, recordings, imports);
+            CaptureScreenRecording(output, devices, settings, desktop, recordings);
             CaptureTransfers(output, transfers);
             CaptureFiles(output, devices, desktop, transfers);
             CaptureWireless(output, devices);
@@ -140,6 +141,14 @@ internal static class Program
         Require<TextBox>(window, "RecordingFolderText").Text = @"Videos\Device Widget";
         Require<TextBox>(window, "PhotoFolderText").Text = @"Pictures\Device Widget Imports";
         CaptureWindow(window, Path.Combine(output, "media-settings.png"));
+    }
+
+    private static void CaptureScreenRecording(string output, IAndroidDeviceService devices,
+        ISettingsService settings, IDesktopIntegration desktop, RecordingStorage recordings)
+    {
+        var window = new ScreenRecordingWindow(DemoDevice, devices, settings, desktop, recordings);
+        Require<TextBox>(window, "RecordingPathText").Text = @"Videos\Device Widget\Aurora Phone_2026-08-03_12-30-00.mkv";
+        CaptureWindow(window, Path.Combine(output, "screen-recording.png"));
     }
 
     private static void CaptureFiles(string output, IAndroidDeviceService devices, IDesktopIntegration desktop,
@@ -281,6 +290,8 @@ internal static class Program
             ScrcpyPreset preset = ScrcpyPreset.Balanced) => OperationResult.Success();
         public OperationResult StartScreenRecording(string serial, string localPath,
             ScrcpyPreset preset = ScrcpyPreset.Balanced) => OperationResult.Success();
+        public bool IsScreenRecording(string serial) => false;
+        public OperationResult StopScreenRecording(string serial) => OperationResult.Success();
         public OperationResult StartShell(string serial) => OperationResult.Success();
     }
 

@@ -7,6 +7,8 @@ namespace AndroidWidget.Infrastructure.Scrcpy;
 public sealed class ScreenMirroringService
 {
     private readonly ScrcpyBundleManager _bundleManager;
+    private readonly object _recordingGate = new();
+    private readonly Dictionary<string, Process> _recordings = new(StringComparer.Ordinal);
 
     public ScreenMirroringService(ScrcpyBundleManager bundleManager) => _bundleManager = bundleManager;
 
@@ -16,6 +18,9 @@ public sealed class ScreenMirroringService
     {
         try
         {
+            if (IsRecording(serial))
+                return OperationResult.Failure("Для этого устройства запись уже идёт.");
+
             var fullPath = Path.GetFullPath(outputPath);
             Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
             return StartProcess(serial, preset, fullPath);
@@ -23,6 +28,61 @@ public sealed class ScreenMirroringService
         catch (Exception ex)
         {
             return OperationResult.Failure(ex.Message);
+        }
+    }
+
+    public bool IsRecording(string serial)
+    {
+        Process? completed = null;
+        lock (_recordingGate)
+        {
+            if (!_recordings.TryGetValue(serial, out var process))
+                return false;
+
+            try
+            {
+                if (!process.HasExited)
+                    return true;
+            }
+            catch (InvalidOperationException) { }
+
+            _recordings.Remove(serial);
+            completed = process;
+        }
+
+        completed.Dispose();
+        return false;
+    }
+
+    public OperationResult StopRecording(string serial)
+    {
+        Process? process;
+        lock (_recordingGate)
+            _recordings.TryGetValue(serial, out process);
+
+        if (process is null)
+            return OperationResult.Failure("Активная запись для этого устройства не найдена.");
+
+        try
+        {
+            if (!process.HasExited)
+            {
+                var closeRequested = process.CloseMainWindow();
+                if (closeRequested && !process.WaitForExit(5000))
+                    process.Kill(entireProcessTree: true);
+                else if (!closeRequested)
+                    process.Kill(entireProcessTree: true);
+
+                if (!process.WaitForExit(5000))
+                    return OperationResult.Failure("scrcpy не завершился вовремя.");
+            }
+
+            ReleaseRecording(serial, process);
+            return OperationResult.Success();
+        }
+        catch (Exception ex)
+        {
+            return OperationResult.Failure($"Не удалось остановить запись: {ex.Message}");
         }
     }
 
@@ -47,13 +107,40 @@ public sealed class ScreenMirroringService
             AddPresetArguments(info.ArgumentList, preset);
             if (recordingPath is not null)
                 info.ArgumentList.Add($"--record={recordingPath}");
-            Process.Start(info);
+            var process = Process.Start(info);
+            if (process is null)
+                return OperationResult.Failure("scrcpy не вернул запущенный процесс.");
+
+            if (recordingPath is not null)
+                TrackRecording(serial, process);
             return OperationResult.Success(recordingPath ?? string.Empty);
         }
         catch (Exception ex)
         {
             return OperationResult.Failure(ex.Message);
         }
+    }
+
+    private void TrackRecording(string serial, Process process)
+    {
+        lock (_recordingGate)
+            _recordings[serial] = process;
+    }
+
+    private void ReleaseRecording(string serial, Process process)
+    {
+        var removed = false;
+        lock (_recordingGate)
+        {
+            if (_recordings.TryGetValue(serial, out var active) && ReferenceEquals(active, process))
+            {
+                _recordings.Remove(serial);
+                removed = true;
+            }
+        }
+
+        if (removed)
+            process.Dispose();
     }
 
     private static void AddPresetArguments(ICollection<string> arguments, ScrcpyPreset preset)

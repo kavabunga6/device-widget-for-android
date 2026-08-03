@@ -1,0 +1,97 @@
+<Window x:Class="AndroidWidget.ScreenRecordingWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:chrome="clr-namespace:AndroidWidget.Presentation.Chrome"
+        xmlns:core="clr-namespace:AndroidWidget.Core;assembly=AndroidWidget.Core"
+        Title="Запись экрана" Icon="{StaticResource AppIconImage}"
+        Width="520" Height="500" MinWidth="480" MinHeight="470"
+        ResizeMode="NoResize" WindowStartupLocation="CenterOwner"
+        Style="{StaticResource DialogWindowStyle}">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="44" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <chrome:DialogTitleBar Title="Запись экрана"
+                               Subtitle="{x:Static core:ProductVersion.ProductLabel}" />
+
+        <Grid Grid.Row="1" Margin="24,16,24,22">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <StackPanel>
+                <TextBlock Text="Запись экрана" FontSize="23" FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextPrimary}" />
+                <TextBlock x:Name="DeviceNameText" Margin="0,4,0,0"
+                           Foreground="{DynamicResource TextSecondary}" />
+            </StackPanel>
+
+            <Border Grid.Row="1" Margin="0,18,0,0" Style="{StaticResource DialogCard}">
+                <StackPanel>
+                    <TextBlock Text="Что произойдёт после запуска" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextPrimary}" />
+                    <TextBlock Margin="0,10,0,0" TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextSecondary}"
+                               Text="1. Запись начнётся сразу и откроется окно scrcpy с экраном телефона." />
+                    <TextBlock Margin="0,6,0,0" TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextSecondary}"
+                               Text="2. Для завершения нажмите «Остановить запись» в этом окне. Также можно закрыть scrcpy." />
+                    <TextBlock Margin="0,6,0,0" TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextSecondary}"
+                               Text="3. Файл MKV будет готов только после остановки записи." />
+                </StackPanel>
+            </Border>
+
+            <StackPanel Grid.Row="2" Margin="0,14,0,0">
+                <TextBlock Text="Файл записи" FontSize="10.5"
+                           Foreground="{DynamicResource TextSecondary}" />
+                <TextBox x:Name="RecordingPathText" Margin="0,5,0,0" IsReadOnly="True"
+                         Style="{StaticResource DialogTextBox}" />
+            </StackPanel>
+
+            <Border Grid.Row="3" Margin="0,14,0,0" Padding="13,11" CornerRadius="11"
+                    Background="{DynamicResource MutedSurfaceBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Ellipse x:Name="StateDot" Width="10" Height="10" Margin="0,0,9,0"
+                             Fill="{DynamicResource Accent}" VerticalAlignment="Center" />
+                    <TextBlock x:Name="StateText" Grid.Column="1" Text="Готово к записи"
+                               FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" />
+                </Grid>
+            </Border>
+
+            <TextBlock x:Name="HintText" Grid.Row="4" Margin="2,10,2,0"
+                       Foreground="{DynamicResource TextSecondary}" FontSize="10.5"
+                       TextWrapping="Wrap"
+                       Text="Запись не начнётся, пока вы не нажмёте кнопку ниже." />
+
+            <Grid Grid.Row="5" Margin="0,14,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Button x:Name="RevealButton" Content="Показать файл" Visibility="Collapsed"
+                        Style="{StaticResource DialogButton}" Click="RevealButton_Click" />
+                <Button x:Name="CloseDialogButton" Grid.Column="2" Content="Отмена" MinWidth="92"
+                        Margin="0,0,8,0" Style="{StaticResource DialogButton}"
+                        Click="CloseButton_Click" />
+                <Button x:Name="PrimaryButton" Grid.Column="3" Content="Начать запись" MinWidth="142"
+                        Style="{StaticResource DialogButton}" IsDefault="True"
+                        Click="PrimaryButton_Click" />
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>

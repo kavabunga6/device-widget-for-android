@@ -26,5 +26,7 @@ public interface IAndroidDeviceService
     OperationResult StartScreenMirroring(string serial, ScrcpyPreset preset = ScrcpyPreset.Balanced);
     OperationResult StartScreenRecording(string serial, string localPath,
         ScrcpyPreset preset = ScrcpyPreset.Balanced);
+    bool IsScreenRecording(string serial);
+    OperationResult StopScreenRecording(string serial);
     OperationResult StartShell(string serial);
 }

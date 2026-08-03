@@ -250,7 +250,7 @@
                             </StackPanel>
                         </Button>
                         <Button Style="{StaticResource AppTileButton}" Click="RecordButton_Click"
-                                ToolTip="Записать экран в MKV через scrcpy">
+                                ToolTip="Настроить и запустить запись экрана в MKV">
                             <StackPanel HorizontalAlignment="Center">
                                 <Border Width="48" Height="48" CornerRadius="14" Background="#C34755">
                                     <Viewbox Width="22" Height="22">
