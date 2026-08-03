@@ -1,6 +1,7 @@
 <Window x:Class="AndroidWidget.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:core="clr-namespace:AndroidWidget.Core;assembly=AndroidWidget.Core"
         Title="Device Widget for Android"
         Icon="{StaticResource AppIconImage}"
         Width="258" Height="392"
@@ -219,7 +220,8 @@
                     <StackPanel>
                         <TextBlock Text="Действия" FontSize="18" FontWeight="SemiBold"
                                    Foreground="{DynamicResource TextPrimary}" />
-                        <TextBlock Text="Device Widget" FontSize="10" Foreground="{DynamicResource TextSecondary}" />
+                        <TextBlock Text="{x:Static core:ProductVersion.ProductLabel}" FontSize="10"
+                                   Foreground="{DynamicResource TextSecondary}" />
                     </StackPanel>
                     <Button Grid.Column="1" Style="{StaticResource IconButton}" Click="CollapsePanel_Click"
                             ToolTip="Закрыть панель действий">

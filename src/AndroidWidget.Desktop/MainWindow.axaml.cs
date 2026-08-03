@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using AndroidWidget.CompanionHost;
+using AndroidWidget.Core;
 using AndroidWidget.Protocol;
 using Avalonia.Controls;
 using Avalonia.Input.Platform;
@@ -23,6 +24,7 @@ public sealed partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        ProductVersionText.Text = ProductVersion.Label;
         var dataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "AndroidWidget", "companion-v1");
         _host = new CompanionHostService(new CompanionHostOptions(dataDirectory));

@@ -16,8 +16,12 @@
       <Grid ColumnDefinitions="*,Auto">
         <StackPanel>
           <TextBlock Text="Device Widget" FontSize="27" FontWeight="SemiBold" Foreground="{StaticResource Primary}" />
-          <TextBlock Text="Companion desktop · Windows / macOS / Linux" Margin="0,4,0,0"
-                     Foreground="{StaticResource Secondary}" />
+          <StackPanel Orientation="Horizontal" Margin="0,4,0,0" Spacing="8">
+            <TextBlock Text="Companion desktop · Windows / macOS / Linux"
+                       Foreground="{StaticResource Secondary}" />
+            <TextBlock x:Name="ProductVersionText" Foreground="{StaticResource Accent}"
+                       FontWeight="SemiBold" />
+          </StackPanel>
         </StackPanel>
         <Border Grid.Column="1" CornerRadius="14" Padding="12,7" Background="#263C34">
           <TextBlock x:Name="HostStatusText" Text="Запуск…" Foreground="#74D8A4" />
