@@ -17,6 +17,18 @@
 
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
+    <EmbeddedResource Include="..\..\vendor\scrcpy-win64-v4.0.zip"
+                      LogicalName="AndroidWidget.Desktop.Bundled.scrcpy-win64-v4.0.zip" />
+    <EmbeddedResource Include="..\..\vendor\scrcpy-LICENSE.txt"
+                      LogicalName="AndroidWidget.Desktop.Bundled.scrcpy-LICENSE.txt" />
+    <EmbeddedResource Include="..\..\companion-android\app\build\outputs\apk\release\app-release.apk"
+                      Condition="Exists('..\..\companion-android\app\build\outputs\apk\release\app-release.apk')"
+                      LogicalName="AndroidWidget.Desktop.Bundled.DeviceWidget-Companion.apk" />
+    <EmbeddedResource Include="..\..\companion-android\app\build\outputs\apk\debug\app-debug.apk"
+                      Condition="!Exists('..\..\companion-android\app\build\outputs\apk\release\app-release.apk') And Exists('..\..\companion-android\app\build\outputs\apk\debug\app-debug.apk')"
+                      LogicalName="AndroidWidget.Desktop.Bundled.DeviceWidget-Companion.apk" />
+    <EmbeddedResource Include="..\..\companion-android\version.properties"
+                      LogicalName="AndroidWidget.Desktop.Bundled.companion-version.properties" />
   </ItemGroup>
 
   <ItemGroup>

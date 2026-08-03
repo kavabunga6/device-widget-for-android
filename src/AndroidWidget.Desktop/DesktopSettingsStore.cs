@@ -70,6 +70,14 @@ internal sealed class DesktopSettingsStore
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
+    public bool SetAutoStart(bool enabled, out string? error)
+    {
+        if (!DesktopAutoStart.TrySet(enabled, out error))
+            return false;
+        Update(current => current with { AutoStart = enabled });
+        return true;
+    }
+
     private static DesktopSettings Load(string path)
     {
         try

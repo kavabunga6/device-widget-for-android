@@ -48,9 +48,15 @@ internal sealed partial class SettingsWindow : Window
     {
         if (_loading)
             return;
+        var autoStart = AutoStartToggle.IsChecked == true;
+        if (autoStart != _store.Current.AutoStart && !_store.SetAutoStart(autoStart, out _))
+        {
+            _loading = true;
+            AutoStartToggle.IsChecked = _store.Current.AutoStart;
+            _loading = false;
+        }
         _store.Update(current => current with
         {
-            AutoStart = AutoStartToggle.IsChecked == true,
             ShowNotifications = NotificationsToggle.IsChecked == true
         });
     }

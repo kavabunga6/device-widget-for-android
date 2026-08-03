@@ -92,11 +92,15 @@ foreach ($target in $desktopTargets) {
     $publish = Join-Path $artifactRoot "publish\$($target.Rid)"
     & $dotnet publish (Join-Path $repoRoot $target.Project) -c Release -r $target.Rid --self-contained true `
         -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
-        -p:EnableCompressionInSingleFile=true -p:Version=$Version -o $publish
+        -p:EnableCompressionInSingleFile=true -p:DebugType=None -p:DebugSymbols=false `
+        -p:Version=$Version -o $publish
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed for $($target.Rid)." }
 
     $archive = Join-Path $packageRoot "DeviceWidget-for-Android-$Version-$($target.Rid).zip"
-    Compress-Archive -Path (Join-Path $publish "*") -DestinationPath $archive -CompressionLevel Optimal
+    $packageItems = Get-ChildItem -LiteralPath $publish |
+        Where-Object Extension -ne ".pdb" |
+        Select-Object -ExpandProperty FullName
+    Compress-Archive -Path $packageItems -DestinationPath $archive -CompressionLevel Optimal
 }
 
 foreach ($entry in $sourceHashes.GetEnumerator()) {

@@ -4,7 +4,7 @@
         Title="Device Widget for Android" Icon="/Assets/AppIcon.png"
         Width="258" Height="392" MinWidth="258" MinHeight="392"
         Background="Transparent" TransparencyLevelHint="Transparent" WindowDecorations="None"
-        CanResize="False" ShowInTaskbar="True" Topmost="True"
+        CanResize="True" ShowInTaskbar="True" Topmost="True"
         WindowStartupLocation="CenterScreen">
   <Window.Styles>
     <Style Selector="Button.chrome">
@@ -42,9 +42,11 @@
     </Style>
   </Window.Styles>
 
+  <Viewbox Stretch="Uniform" StretchDirection="Both">
   <Grid x:Name="RootLayout" ColumnDefinitions="Auto,Auto" Margin="4">
     <Border x:Name="PhoneShell" Width="242" Height="376" VerticalAlignment="Top" CornerRadius="38" Margin="4"
             Background="{DynamicResource Shell}" BorderBrush="{DynamicResource Border}" BorderThickness="1.2"
+            DragDrop.AllowDrop="True" DragDrop.DragOver="PhoneShell_DragOver" DragDrop.Drop="PhoneShell_Drop"
             PointerPressed="PhoneShell_PointerPressed"
             BoxShadow="0 8 20 0 #66000000">
       <Grid Margin="9">
@@ -70,7 +72,7 @@
 
               <StackPanel Grid.Row="1" Margin="17,0" VerticalAlignment="Center"
                           Background="Transparent" PointerPressed="PhoneScreen_PointerPressed">
-                <Border Width="62" Height="62" CornerRadius="21" HorizontalAlignment="Center"
+                <Border x:Name="DeviceIconBorder" Width="62" Height="62" CornerRadius="21" HorizontalAlignment="Center"
                         Background="#302B50" BorderBrush="{DynamicResource Accent}" BorderThickness="1">
                   <Grid>
                     <Ellipse Width="31" Height="23" Fill="{DynamicResource Accent}" VerticalAlignment="Center" />
@@ -84,6 +86,8 @@
                             Margin="18,-31,0,0" RenderTransformOrigin="0.5,1">
                       <Border.RenderTransform><RotateTransform Angle="30" /></Border.RenderTransform>
                     </Border>
+                    <TextBlock x:Name="StateOverlayText" IsVisible="False" FontSize="27"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
                   </Grid>
                 </Border>
                 <TextBlock x:Name="DeviceNameText" Text="Ищу устройство…" Margin="0,12,0,2"
@@ -107,11 +111,7 @@
                              Foreground="{DynamicResource Primary}" />
                 </Button>
                 <StackPanel Margin="0,8,0,0">
-                  <Border x:Name="LatestMessageBorder" IsVisible="False" Padding="10,7" Margin="0,0,0,7"
-                          CornerRadius="12,12,12,3" Background="#332D56">
-                    <TextBlock x:Name="LatestMessageText" FontSize="10" TextWrapping="Wrap"
-                               MaxHeight="42" Foreground="#E8E4FF" />
-                  </Border>
+                  <StackPanel x:Name="FullBubblePanel" MaxHeight="112" ClipToBounds="True" Spacing="4" />
                   <TextBlock x:Name="StatusText" Text="Нажмите, чтобы открыть действия"
                              FontSize="9.5" Foreground="{DynamicResource Secondary}"
                              TextAlignment="Center" TextWrapping="Wrap" MaxHeight="30" />
@@ -151,6 +151,8 @@
                        VerticalAlignment="Bottom" Margin="0,0,-2,-4" />
               <Border Grid.RowSpan="4" Width="20" Height="3" CornerRadius="2" Background="{DynamicResource Accent}"
                       HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,-7" />
+              <StackPanel x:Name="MiniBubblePanel" Grid.RowSpan="4" VerticalAlignment="Bottom"
+                          Margin="0,0,0,13" Spacing="3" MaxHeight="135" ClipToBounds="True" />
             </Grid>
           </Grid>
         </Border>
@@ -177,7 +179,7 @@
                   Click="CollapsePanel_Click" ToolTip.Tip="Скрыть действия" />
         </Grid>
 
-        <ScrollViewer Grid.Row="1" Margin="0,10,0,0" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Grid.Row="1" Margin="0,10,0,0" VerticalScrollBarVisibility="Hidden">
           <StackPanel>
             <UniformGrid Columns="3" Width="282" HorizontalAlignment="Center">
               <Button Classes="tile" Click="ScreenButton_Click" ToolTip.Tip="Трансляция через scrcpy">
@@ -186,7 +188,7 @@
               <Button Classes="tile" Click="RecordButton_Click" ToolTip.Tip="Запись экрана в MKV">
                 <StackPanel><Border Width="48" Height="48" CornerRadius="14" Background="#C34755"><TextBlock Text="●" FontSize="23" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock x:Name="RecordButtonText" Text="Запись" Margin="0,5,0,0" FontSize="10.5" HorizontalAlignment="Center"/></StackPanel>
               </Button>
-              <Button Classes="tile" Click="FilesButton_Click" ToolTip.Tip="Отправить файлы на телефон">
+              <Button Classes="tile" Click="FilesButton_Click" ToolTip.Tip="Открыть файлы телефона">
                 <StackPanel><Border Width="48" Height="48" CornerRadius="14" Background="#E59A27"><TextBlock Text="▰" FontSize="23" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="Файлы" Margin="0,5,0,0" FontSize="10.5" HorizontalAlignment="Center"/></StackPanel>
               </Button>
               <Button Classes="tile" Click="TransfersButton_Click" ToolTip.Tip="Последняя операция передачи">
@@ -238,6 +240,8 @@
                   <TextBlock Text="Companion" FontWeight="SemiBold" Foreground="{DynamicResource Primary}" />
                   <Button Grid.Column="1" Classes="compact" Content="Новый код" Click="PairButton_Click" />
                 </Grid>
+                <Button x:Name="CompanionInstallButton" Classes="compact" Margin="0,6,0,0"
+                        Content="Установить компаньон" Click="CompanionInstallButton_Click" />
                 <TextBlock x:Name="HostStatusText" Text="Запуск защищённого host…" Margin="0,5,0,0"
                            FontSize="10" Foreground="#72D8A2" />
                 <TextBlock x:Name="PairCodeText" Text="—— ——" Margin="0,8,0,0" FontSize="22"
@@ -260,5 +264,12 @@
         </StackPanel>
       </Grid>
     </Border>
+    <Border Grid.ColumnSpan="2" Width="20" Height="20" Background="Transparent"
+            HorizontalAlignment="Right" VerticalAlignment="Bottom"
+            PointerPressed="ResizeGrip_PointerPressed">
+      <Path Data="M 5,17 L 17,5 M 11,17 L 17,11" Stroke="{DynamicResource Secondary}"
+            StrokeThickness="1.4" Opacity="0.65" />
+    </Border>
   </Grid>
+  </Viewbox>
 </Window>

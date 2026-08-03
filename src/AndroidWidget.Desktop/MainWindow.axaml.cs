@@ -20,104 +20,113 @@ public sealed partial class MainWindow : Window
     private const double PhoneWindowHeight = 392;
     private const double DrawerWindowWidth = 584;
     private const double DrawerWindowHeight = 508;
+    private readonly DesktopRuntime _runtime;
     private readonly CompanionHostService _host;
-    private readonly PortableAdbService _adb = new();
-    private readonly DesktopSettingsStore _settings = new();
-    private readonly List<AdbDeviceChoice> _adbDevices = [];
-    private readonly DispatcherTimer _adbRefreshTimer;
+    private readonly PortableAdbService _adb;
+    private readonly DesktopSettingsStore _settings;
+    private readonly string _boundSerial;
     private CancellationTokenSource? _adbOperation;
+    private readonly Dictionary<Guid, DesktopTransferState> _transferStates = [];
+    private readonly List<NotificationBubble> _notificationBubbles = [];
+    private readonly Dictionary<Guid, CancellationTokenSource> _notificationTimers = [];
     private string? _recordingPath;
     private bool _drawerOpen;
     private bool _drawerOnLeft;
     private bool _miniMode;
     private PixelPoint? _miniReturnPosition;
-    private int _reportedDeviceCount = -1;
     private AdbDeviceChoice? _activeDevice;
 
-    internal event EventHandler<int>? DeviceCountChanged;
     internal event EventHandler? HideRequested;
 
-    public MainWindow()
+    public MainWindow() : this(new DesktopRuntime(),
+        new PortableAdbDevice("design", "Android", string.Empty, string.Empty, null, false, "device", true, false))
     {
+    }
+
+    internal MainWindow(DesktopRuntime runtime, PortableAdbDevice device)
+    {
+        _runtime = runtime;
+        _host = runtime.Host;
+        _adb = runtime.Adb;
+        _settings = runtime.Settings;
+        _boundSerial = device.Serial;
+        _activeDevice = AdbDeviceChoice.From(device);
         InitializeComponent();
         ApplySettings();
-        _settings.Changed += (_, _) => ApplySettings();
+        _settings.Changed += Settings_Changed;
         ProductVersionText.Text = ProductVersion.ProductLabel;
-        var dataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "AndroidWidget", "companion-v1");
-        _host = new CompanionHostService(new CompanionHostOptions(dataDirectory));
         _host.DeviceChanged += HandleCompanionDeviceChanged;
         _host.NotificationReceived += HandleNotification;
-        _adbRefreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
-        _adbRefreshTimer.Tick += async (_, _) => await RefreshAdbAsync();
-        Opened += async (_, _) =>
+        _runtime.Transfers.Changed += Transfers_Changed;
+        _runtime.PhotoDetected += Runtime_PhotoDetected;
+        Opened += (_, _) =>
         {
-            await StartHostAsync();
-            await RefreshAdbAsync();
-            _adbRefreshTimer.Start();
+            HostStatusText.Text = runtime.HostError is null
+                ? $"Защищённый host · {ProtocolConstants.DefaultPort}"
+                : $"Ошибка host: {runtime.HostError}";
+            ApplySelectedDevice();
         };
-        Closed += async (_, _) =>
+        Closed += (_, _) =>
         {
-            _adbRefreshTimer.Stop();
             _adbOperation?.Cancel();
-            await _host.DisposeAsync();
+            _settings.Changed -= Settings_Changed;
+            _host.DeviceChanged -= HandleCompanionDeviceChanged;
+            _host.NotificationReceived -= HandleNotification;
+            _runtime.Transfers.Changed -= Transfers_Changed;
+            _runtime.PhotoDetected -= Runtime_PhotoDetected;
+            foreach (var timer in _notificationTimers.Values)
+            {
+                timer.Cancel();
+                timer.Dispose();
+            }
+            _notificationTimers.Clear();
         };
     }
 
-    private async Task StartHostAsync()
-    {
-        try
-        {
-            await _host.StartAsync();
-            HostStatusText.Text = $"Защищённый host · {ProtocolConstants.DefaultPort}";
-        }
-        catch (Exception ex)
-        {
-            HostStatusText.Text = $"Ошибка host: {ex.Message}";
-            HostStatusText.Foreground = Brushes.IndianRed;
-        }
-    }
+    private void Settings_Changed(object? sender, EventArgs e) => ApplySettings();
 
     private async Task RefreshAdbAsync()
     {
-        var selectedSerial = _activeDevice?.Serial;
-        try
-        {
-            var discovered = await _adb.GetDevicesAsync(CancellationToken.None);
-            _adbDevices.Clear();
-            foreach (var device in discovered)
-                _adbDevices.Add(AdbDeviceChoice.From(device));
-            _activeDevice = _adbDevices.FirstOrDefault(device => device.Serial == selectedSerial)
-                            ?? _adbDevices.FirstOrDefault();
-            ApplySelectedDevice();
-            if (_adbDevices.Count == 0)
-                SetStatus("Устройство не найдено · подключите USB или Wi-Fi ADB");
-            ReportDeviceCount();
-        }
-        catch (Exception ex)
-        {
-            _adbDevices.Clear();
-            _activeDevice = null;
-            ApplyDevice(null);
-            SetStatus($"ADB: {FriendlyToolError(ex.Message, "adb")}", true);
-            ReportDeviceCount();
-        }
-    }
-
-    private void ReportDeviceCount()
-    {
-        if (_reportedDeviceCount == _adbDevices.Count)
-            return;
-        _reportedDeviceCount = _adbDevices.Count;
-        DeviceCountChanged?.Invoke(this, _reportedDeviceCount);
+        await _runtime.RefreshAsync();
+        if (_runtime.AdbError is not null)
+            SetStatus($"ADB: {FriendlyToolError(_runtime.AdbError, "adb")}", true);
+        if (_runtime.Devices.FirstOrDefault(device => device.Serial == _boundSerial) is { } current)
+            UpdateDevice(current);
     }
 
     private void ApplySelectedDevice() => ApplyDevice(_activeDevice);
+
+    internal void UpdateDevice(PortableAdbDevice device)
+    {
+        if (device.Serial != _boundSerial)
+            return;
+        _activeDevice = AdbDeviceChoice.From(device);
+        ApplySelectedDevice();
+    }
+
+    internal void CloseForDisconnect() => Close();
+
+    internal void CloseForExit() => Close();
+
+    internal void PlaceInSlot(int index)
+    {
+        var screen = Screens.Primary;
+        if (screen is null)
+            return;
+        var offset = (int)Math.Round(28 * screen.Scaling) * Math.Max(0, index);
+        var width = (int)Math.Ceiling(PhoneWindowWidth * screen.Scaling);
+        var height = (int)Math.Ceiling(PhoneWindowHeight * screen.Scaling);
+        Position = new PixelPoint(
+            Math.Max(screen.WorkingArea.X, screen.WorkingArea.Right - width - offset),
+            Math.Max(screen.WorkingArea.Y, screen.WorkingArea.Bottom - height - offset));
+    }
 
     private void ApplyDevice(AdbDeviceChoice? device)
     {
         if (device is null)
         {
+            StateOverlayText.IsVisible = false;
+            DeviceIconBorder.Background = new SolidColorBrush(Color.FromRgb(48, 43, 80));
             DeviceNameText.Text = "Устройство не найдено";
             ConnectionText.Text = "Подключите USB и разрешите отладку";
             BatteryText.Text = "—";
@@ -127,12 +136,19 @@ public sealed partial class MainWindow : Window
             MiniDeviceNameText.Text = "Android";
             MiniConnectionText.Text = "ADB не подключён";
             MiniBatteryText.Text = "—";
+            MiniBatteryText.Foreground = new SolidColorBrush(Color.FromRgb(242, 244, 250));
             MiniDetailText.Text = "Ожидаю устройство";
             MiniStatusDot.Fill = new SolidColorBrush(Color.FromRgb(105, 115, 142));
             return;
         }
 
         DeviceNameText.Text = device.Name;
+        DeviceIconBorder.Background = new SolidColorBrush(!device.Authorized || device.Locked || !device.ScreenOn
+            ? Color.FromRgb(19, 21, 27)
+            : Color.FromRgb(48, 43, 80));
+        StateOverlayText.IsVisible = !device.Authorized || device.Locked || !device.ScreenOn;
+        StateOverlayText.Text = !device.Authorized || device.Locked ? "🔒" : "⏻";
+        StateOverlayText.Foreground = new SolidColorBrush(Color.FromRgb(255, 92, 92));
         ConnectionText.Text = $"{(device.Wireless ? "Wi-Fi" : "USB")} / ADB" +
                               (string.IsNullOrWhiteSpace(device.AndroidVersion)
                                   ? string.Empty
@@ -149,10 +165,21 @@ public sealed partial class MainWindow : Window
         DropHintText.Text = "Отправить файл или APK";
         MiniDeviceNameText.Text = device.Name;
         MiniConnectionText.Text = device.Wireless ? "Wi-Fi / ADB" : "USB / ADB";
-        MiniBatteryText.Text = BatteryText.Text;
-        MiniDetailText.Text = "Готов к работе";
-        MiniStatusDot.Fill = new SolidColorBrush(Color.FromRgb(78, 205, 132));
-        SetStatus($"Подключено: {device.Serial}");
+        MiniBatteryText.Text = !device.Authorized || device.Locked ? "🔒" : !device.ScreenOn ? "⏻" : BatteryText.Text;
+        MiniBatteryText.Foreground = new SolidColorBrush(!device.Authorized || device.Locked || !device.ScreenOn
+            ? Color.FromRgb(255, 92, 92)
+            : Color.FromRgb(242, 244, 250));
+        MiniDetailText.Text = !device.Authorized ? "Разрешите USB-отладку"
+            : device.Locked ? "Телефон заблокирован"
+            : !device.ScreenOn ? "Экран выключен"
+            : "Готов к работе";
+        MiniStatusDot.Fill = new SolidColorBrush(device.Authorized && device.ScreenOn && !device.Locked
+            ? Color.FromRgb(78, 205, 132)
+            : Color.FromRgb(255, 92, 92));
+        SetStatus(!device.Authorized ? "Требуется авторизация ADB на телефоне"
+            : device.Locked ? "Телефон заблокирован"
+            : !device.ScreenOn ? "Экран телефона выключен"
+            : $"Подключено: {device.Serial}", !device.Authorized);
     }
 
     private void ToggleDrawer(bool? open = null)
@@ -194,6 +221,14 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private void ResizeGrip_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            return;
+        BeginResizeDrag(WindowEdge.SouthEast, e);
+        e.Handled = true;
+    }
+
     private void PhoneShell_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
@@ -202,6 +237,59 @@ public sealed partial class MainWindow : Window
             e.Handled = true;
         }
     }
+
+    private void PhoneShell_DragOver(object? sender, DragEventArgs e)
+    {
+        e.DragEffects = e.DataTransfer.Contains(DataFormat.File)
+            ? DragDropEffects.Copy
+            : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void PhoneShell_Drop(object? sender, DragEventArgs e)
+    {
+        var files = e.DataTransfer.TryGetFiles();
+        QueuePaths(files?.Select(file => file.Path.LocalPath) ?? []);
+        e.Handled = true;
+    }
+
+    private void QueuePaths(IEnumerable<string> paths, bool? installApk = null)
+    {
+        if (SelectedAdbDevice() is not { } device)
+            return;
+        var accepted = 0;
+        foreach (var path in paths.Where(path => File.Exists(path) || Directory.Exists(path)))
+        {
+            _runtime.Transfers.Enqueue(device.Serial, path, installApk);
+            accepted++;
+        }
+        if (accepted > 0)
+            ShowNotification(accepted == 1 ? "Добавлено в очередь" : $"В очереди файлов: {accepted}");
+    }
+
+    private void Transfers_Changed(object? sender, EventArgs e)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            foreach (var transfer in _runtime.Transfers.Snapshot.Where(item => item.Serial == _boundSerial))
+            {
+                var previous = _transferStates.GetValueOrDefault(transfer.Id, DesktopTransferState.Queued);
+                _transferStates[transfer.Id] = transfer.State;
+                if (previous == transfer.State || transfer.State == DesktopTransferState.Running)
+                    continue;
+                if (transfer.State is DesktopTransferState.Completed or DesktopTransferState.Failed or DesktopTransferState.Cancelled)
+                    ShowNotification($"{transfer.Name}: {transfer.Message}");
+            }
+        });
+    }
+
+    private void Runtime_PhotoDetected(object? sender, DesktopPhotoEvent photo) =>
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (photo.Serial != _boundSerial)
+                return;
+            ShowNotification(photo.Message, photo.LocalPath is { } path ? () => RevealPath(path) : null);
+        });
 
     private void PhoneScreen_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
@@ -276,8 +364,8 @@ public sealed partial class MainWindow : Window
         MaxHeight = double.PositiveInfinity;
         Width = width;
         Height = height;
-        MinWidth = width;
-        MinHeight = height;
+        MinWidth = Math.Max(96, width * 0.7);
+        MinHeight = Math.Max(150, height * 0.7);
     }
 
     private (PixelPoint Position, bool OpensLeft) GetExpansionPlacement(double targetWidth, double targetHeight)
@@ -350,7 +438,7 @@ public sealed partial class MainWindow : Window
         window.Activate();
     }
 
-    internal Task RefreshDevicesAsync() => RefreshAdbAsync();
+    internal Task RefreshDevicesAsync() => _runtime.RefreshAsync();
 
     private void ApplySettings()
     {
@@ -383,7 +471,7 @@ public sealed partial class MainWindow : Window
     {
         if (SelectedAdbDevice() is not { } device)
             return;
-        var result = _adb.StartScrcpy(device.Serial);
+        var result = _adb.StartScrcpy(device.Serial, preset: _settings.Current.ScrcpyPreset);
         SetStatus(result.IsSuccess ? "scrcpy запущен ✓" : FriendlyToolError(result.Message, "scrcpy"),
             !result.IsSuccess);
     }
@@ -396,6 +484,9 @@ public sealed partial class MainWindow : Window
         {
             var stopped = _adb.StopRecording(device.Serial);
             RecordButtonText.Text = "Запись";
+            if (stopped.IsSuccess && _recordingPath is { } savedPath)
+                ShowNotification($"Видео сохранено: {Path.GetFileName(savedPath)} · нажмите, чтобы открыть",
+                    () => RevealPath(savedPath));
             SetStatus(stopped.IsSuccess && _recordingPath is not null
                 ? $"Видео сохранено: {Path.GetFileName(_recordingPath)}"
                 : stopped.Message, !stopped.IsSuccess);
@@ -404,32 +495,25 @@ public sealed partial class MainWindow : Window
         var folder = _settings.Current.RecordingFolder;
         Directory.CreateDirectory(folder);
         _recordingPath = Path.Combine(folder, $"Android_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.mkv");
-        var result = _adb.StartScrcpy(device.Serial, _recordingPath);
+        var result = _adb.StartScrcpy(device.Serial, _recordingPath, _settings.Current.ScrcpyPreset);
         if (result.IsSuccess)
             RecordButtonText.Text = "Остановить";
         SetStatus(result.IsSuccess ? "Идёт запись · нажмите ещё раз для остановки" : result.Message,
             !result.IsSuccess);
     }
 
-    private async void FilesButton_Click(object? sender, RoutedEventArgs e)
+    private void FilesButton_Click(object? sender, RoutedEventArgs e)
     {
         if (SelectedAdbDevice() is not { } device)
             return;
-        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = "Отправить на Android",
-            AllowMultiple = true
-        });
-        foreach (var file in files)
-        {
-            var path = file.Path.LocalPath;
-            await RunAdbOperationAsync(token => _adb.PushAsync(device.Serial, path, token),
-                result => result.IsSuccess ? $"Передано: {Path.GetFileName(path)} ✓" : result.Message);
-        }
+        new RemoteFilesWindow(_adb, device.Serial).Show(this);
     }
 
-    private void TransfersButton_Click(object? sender, RoutedEventArgs e) =>
-        SetStatus("Передачи выполняются последовательно; прогресс отображается здесь");
+    private void TransfersButton_Click(object? sender, RoutedEventArgs e)
+    {
+        var window = new TransferQueueWindow(_runtime.Transfers, _boundSerial);
+        window.Show(this);
+    }
 
     private async void ScreenshotButton_Click(object? sender, RoutedEventArgs e)
     {
@@ -442,7 +526,8 @@ public sealed partial class MainWindow : Window
         {
             if (!result.IsSuccess)
                 return result.Message;
-            RevealPath(path);
+            ShowNotification($"Скриншот сохранён: {Path.GetFileName(path)} · нажмите, чтобы открыть",
+                () => RevealPath(path));
             return $"Скриншот сохранён: {Path.GetFileName(path)} ✓";
         });
     }
@@ -457,12 +542,7 @@ public sealed partial class MainWindow : Window
             AllowMultiple = true,
             FileTypeFilter = [new FilePickerFileType("Android package") { Patterns = ["*.apk"] }]
         });
-        foreach (var file in files)
-        {
-            var path = file.Path.LocalPath;
-            await RunAdbOperationAsync(token => _adb.InstallAsync(device.Serial, path, token),
-                result => result.IsSuccess ? $"Установлено: {Path.GetFileName(path)} ✓" : result.Message);
-        }
+        QueuePaths(files.Select(file => file.Path.LocalPath), true);
     }
 
     private void ShellButton_Click(object? sender, RoutedEventArgs e)
@@ -504,10 +584,38 @@ public sealed partial class MainWindow : Window
         WirelessPanel.IsVisible = !WirelessPanel.IsVisible;
     }
 
-    private void CompanionButton_Click(object? sender, RoutedEventArgs e)
+    private async void CompanionButton_Click(object? sender, RoutedEventArgs e)
     {
         WirelessPanel.IsVisible = false;
         CompanionPanel.IsVisible = !CompanionPanel.IsVisible;
+        if (!CompanionPanel.IsVisible || SelectedAdbDevice(false) is not { } device)
+            return;
+        var state = await _runtime.Companion.GetStateAsync(device.Serial, CancellationToken.None);
+        var installerAvailable = _runtime.Companion.IsAvailable;
+        CompanionInstallButton.IsEnabled = installerAvailable || state == DesktopCompanionState.Installed;
+        CompanionInstallButton.Content = !installerAvailable && state != DesktopCompanionState.Installed
+            ? "APK не входит в сборку"
+            : state switch
+            {
+                DesktopCompanionState.UpdateAvailable => "Обновить компаньон",
+                DesktopCompanionState.Installed => "Открыть компаньон",
+                _ => "Установить компаньон"
+            };
+    }
+
+    private async void CompanionInstallButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (SelectedAdbDevice() is not { } device)
+            return;
+        var state = await _runtime.Companion.GetStateAsync(device.Serial, CancellationToken.None);
+        await RunAdbOperationAsync(token => state == DesktopCompanionState.Installed
+                ? _runtime.Companion.LaunchAsync(device.Serial, token)
+                : _runtime.Companion.InstallOrUpdateAsync(device.Serial, token),
+            result => result.IsSuccess ? "Компаньон открыт ✓" : result.Message);
+        var updated = await _runtime.Companion.GetStateAsync(device.Serial, CancellationToken.None);
+        CompanionInstallButton.Content = updated == DesktopCompanionState.Installed
+            ? "Открыть компаньон"
+            : updated == DesktopCompanionState.UpdateAvailable ? "Обновить компаньон" : "Установить компаньон";
     }
 
     private async void WirelessPairButton_Click(object? sender, RoutedEventArgs e) =>
@@ -522,12 +630,21 @@ public sealed partial class MainWindow : Window
         await RefreshAdbAsync();
     }
 
-    private void PairButton_Click(object? sender, RoutedEventArgs e)
+    private async void PairButton_Click(object? sender, RoutedEventArgs e)
     {
-        var pairing = _host.CreatePairingSession();
+        if (SelectedAdbDevice() is not { } device)
+            return;
+        var pairing = _host.CreatePairingSession(_boundSerial, "127.0.0.1");
         PairCodeText.Text = $"{pairing.Code[..3]} {pairing.Code[3..]}";
         PairingUriText.Text = pairing.Uri;
         PairingHintText.Text = $"Действует до {pairing.ExpiresAt.ToLocalTime():HH:mm:ss}";
+        var reverse = await _runtime.Companion.PrepareReverseAsync(device.Serial, ProtocolConstants.DefaultPort,
+            CancellationToken.None);
+        var opened = reverse.IsSuccess
+            ? await _runtime.Companion.OpenPairingAsync(device.Serial, pairing.Uri, CancellationToken.None)
+            : reverse;
+        if (!opened.IsSuccess)
+            PairingHintText.Text = $"Не удалось открыть на телефоне: {opened.Message}";
     }
 
     private async void CopyPairingButton_Click(object? sender, RoutedEventArgs e)
@@ -544,7 +661,7 @@ public sealed partial class MainWindow : Window
 
     private AdbDeviceChoice? SelectedAdbDevice(bool showError = true)
     {
-        if (_activeDevice is { } device)
+        if (_activeDevice is { Authorized: true } device)
             return device;
         if (showError)
             SetStatus("Сначала подключите и выберите Android-устройство", true);
@@ -585,32 +702,89 @@ public sealed partial class MainWindow : Window
     private void HandleCompanionDeviceChanged(object? sender, CompanionDeviceState state) =>
         Dispatcher.UIThread.Post(() =>
         {
-            if (!state.IsConnected || state.LatestNotification is not { } notification)
+            if (!string.Equals(state.ClientTag, _boundSerial, StringComparison.Ordinal))
                 return;
-            ShowNotification($"{notification.Title}: {notification.Preview}".Trim(':', ' '));
+            HostStatusText.Text = state.IsConnected
+                ? "Компаньон сопряжён · уведомления включены"
+                : "Компаньон не подключён";
         });
 
     private void HandleNotification(object? sender, CompanionNotification received) =>
         Dispatcher.UIThread.Post(() =>
-            ShowNotification($"{received.Notification.Title}: {received.Notification.Preview}".Trim(':', ' ')));
+        {
+            if (!string.Equals(received.ClientTag, _boundSerial, StringComparison.Ordinal))
+                return;
+            ShowNotification($"{received.Notification.Title}: {received.Notification.Preview}".Trim(':', ' '));
+        });
 
-    private void ShowNotification(string message)
+    private void ShowNotification(string message, Action? action = null)
     {
         if (!_settings.Current.ShowNotifications || string.IsNullOrWhiteSpace(message))
             return;
-        LatestMessageText.Text = message;
-        LatestMessageBorder.IsVisible = true;
-        _ = HideNotificationLaterAsync(message);
+        var bubble = new NotificationBubble(Guid.NewGuid(), message, action);
+        _notificationBubbles.Add(bubble);
+        while (_notificationBubbles.Count > 5)
+            RemoveNotification(_notificationBubbles[0].Id);
+        RenderNotifications();
+        var timer = new CancellationTokenSource();
+        _notificationTimers[bubble.Id] = timer;
+        _ = HideNotificationLaterAsync(bubble.Id, timer.Token);
     }
 
-    private async Task HideNotificationLaterAsync(string message)
+    private async Task HideNotificationLaterAsync(Guid id, CancellationToken token)
     {
-        await Task.Delay(TimeSpan.FromSeconds(_settings.Current.NotificationDurationSeconds));
-        Dispatcher.UIThread.Post(() =>
+        try
         {
-            if (LatestMessageText.Text == message)
-                LatestMessageBorder.IsVisible = false;
-        });
+            await Task.Delay(TimeSpan.FromSeconds(_settings.Current.NotificationDurationSeconds), token);
+            Dispatcher.UIThread.Post(() => RemoveNotification(id));
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private void RemoveNotification(Guid id)
+    {
+        if (_notificationTimers.Remove(id, out var timer))
+        {
+            timer.Cancel();
+            timer.Dispose();
+        }
+        _notificationBubbles.RemoveAll(item => item.Id == id);
+        RenderNotifications();
+    }
+
+    private void RenderNotifications()
+    {
+        FullBubblePanel.Children.Clear();
+        MiniBubblePanel.Children.Clear();
+        foreach (var bubble in _notificationBubbles)
+        {
+            FullBubblePanel.Children.Add(CreateBubble(bubble, false));
+            MiniBubblePanel.Children.Add(CreateBubble(bubble, true));
+        }
+    }
+
+    private static Border CreateBubble(NotificationBubble bubble, bool compact)
+    {
+        var view = new Border
+        {
+            Padding = compact ? new Thickness(6, 4) : new Thickness(10, 6),
+            CornerRadius = new CornerRadius(10, 10, 10, 3),
+            Background = new SolidColorBrush(Color.FromRgb(51, 45, 86)),
+            Child = new TextBlock
+            {
+                Text = bubble.Message,
+                FontSize = compact ? 8 : 9.5,
+                TextWrapping = TextWrapping.Wrap,
+                MaxHeight = compact ? 23 : 34,
+                Foreground = new SolidColorBrush(Color.FromRgb(232, 228, 255))
+            }
+        };
+        if (bubble.Action is not null)
+        {
+            view.Cursor = new Cursor(StandardCursorType.Hand);
+            view.PointerReleased += (_, _) => bubble.Action();
+        }
+        return view;
     }
 
     private static void RevealPath(string path)
@@ -644,14 +818,17 @@ public sealed partial class MainWindow : Window
             ? $"{tool} не найден в PATH"
             : message;
 
+    private sealed record NotificationBubble(Guid Id, string Message, Action? Action);
+
     private sealed record AdbDeviceChoice(string Serial, string Name, string Manufacturer,
-        string AndroidVersion, int? BatteryPercent, bool Wireless)
+        string AndroidVersion, int? BatteryPercent, bool Wireless, string AdbState, bool ScreenOn, bool Locked)
     {
+        public bool Authorized => AdbState == "device";
         public string Label => $"{Name} · {(Wireless ? "Wi-Fi" : "USB")} · {Serial}";
 
         public static AdbDeviceChoice From(PortableAdbDevice device) =>
             new(device.Serial, device.Name, device.Manufacturer, device.AndroidVersion,
-                device.BatteryPercent, device.Wireless);
+                device.BatteryPercent, device.Wireless, device.AdbState, device.ScreenOn, device.Locked);
 
         public override string ToString() => Label;
     }

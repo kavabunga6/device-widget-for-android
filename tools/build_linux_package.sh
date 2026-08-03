@@ -41,10 +41,13 @@ dotnet publish "$repo_root/src/AndroidWidget.Desktop/AndroidWidget.Desktop.cspro
   -p:PublishSingleFile=true \
   -p:IncludeNativeLibrariesForSelfExtract=true \
   -p:EnableCompressionInSingleFile=true \
+  -p:DebugType=None \
+  -p:DebugSymbols=false \
   -p:Version="$version" \
   --output "$publish_directory"
 
 cp -R "$publish_directory" "$package_directory"
+find "$package_directory" -type f -name '*.pdb' -delete
 chmod 755 "$binary"
 
 machine="$(readelf -h "$binary" | awk -F: '/Machine:/ { gsub(/^[[:space:]]+/, "", $2); print $2; exit }')"

@@ -45,6 +45,8 @@ dotnet publish "$repo_root/src/AndroidWidget.Desktop/AndroidWidget.Desktop.cspro
   -p:PublishSingleFile=true \
   -p:IncludeNativeLibrariesForSelfExtract=true \
   -p:EnableCompressionInSingleFile=true \
+  -p:DebugType=None \
+  -p:DebugSymbols=false \
   -p:Version="$version" \
   --output "$publish_directory"
 
