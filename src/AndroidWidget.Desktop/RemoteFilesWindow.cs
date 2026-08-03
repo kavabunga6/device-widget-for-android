@@ -1,3 +1,6 @@
+using System.Diagnostics;
+using System.Security.Cryptography;
+using System.Text;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -10,12 +13,19 @@ namespace AndroidWidget.Desktop;
 
 internal sealed class RemoteFilesWindow : Window
 {
+    private static readonly HashSet<string> UnsafePreviewExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".app", ".bat", ".cmd", ".com", ".desktop", ".exe", ".js", ".jse", ".lnk", ".msi", ".ps1",
+        ".run", ".scr", ".sh", ".url", ".vbe", ".vbs", ".wsf", ".wsh"
+    };
     private readonly PortableAdbService _adb;
     private readonly string _serial;
+    private readonly CancellationTokenSource _lifetime = new();
     private readonly ListBox _entries = new();
     private readonly TextBlock _pathText = new();
     private readonly TextBlock _status = new();
     private string _path = "/sdcard";
+    private bool _busy;
 
     public RemoteFilesWindow(PortableAdbService adb, string serial)
     {
@@ -63,6 +73,11 @@ internal sealed class RemoteFilesWindow : Window
         root.Children.Add(footer);
         Content = root;
         Opened += async (_, _) => await RefreshAsync();
+        Closed += (_, _) =>
+        {
+            _lifetime.Cancel();
+            _lifetime.Dispose();
+        };
     }
 
     private static Button Button(string text, Func<Task> action)
@@ -78,8 +93,11 @@ internal sealed class RemoteFilesWindow : Window
         {
             _status.Text = "Загрузка…";
             _pathText.Text = _path;
-            _entries.ItemsSource = await _adb.ListDirectoryAsync(_serial, _path, CancellationToken.None);
-            _status.Text = "Двойной щелчок открывает папку";
+            _entries.ItemsSource = await _adb.ListDirectoryAsync(_serial, _path, _lifetime.Token);
+            _status.Text = "Двойной щелчок открывает папку или файл";
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+        {
         }
         catch (Exception ex)
         {
@@ -103,13 +121,48 @@ internal sealed class RemoteFilesWindow : Window
 
     private async Task OpenSelectedAsync()
     {
-        if (_entries.SelectedItem is PortableRemoteEntry { IsDirectory: true } entry)
+        if (_entries.SelectedItem is not PortableRemoteEntry entry || _busy)
+            return;
+        if (entry.IsDirectory)
+        {
             await NavigateAsync(entry.Path);
+            return;
+        }
+
+        var extension = Path.GetExtension(entry.Name);
+        if (UnsafePreviewExtensions.Contains(extension))
+        {
+            _status.Text = "Этот тип файла нельзя запускать из предпросмотра · используйте «Скачать…»";
+            return;
+        }
+
+        _busy = true;
+        _status.Text = $"Открываю {entry.Name}…";
+        try
+        {
+            var localPath = CreatePreviewPath(entry);
+            var result = await _adb.PullAsync(_serial, entry.Path, localPath, _lifetime.Token);
+            if (!result.IsSuccess)
+                throw new InvalidOperationException(result.Message);
+            OpenLocalFile(localPath);
+            _status.Text = "Файл открыт из временной копии ✓";
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+        {
+        }
+        catch (Exception ex)
+        {
+            _status.Text = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
 
     private async Task DownloadSelectedAsync()
     {
-        if (_entries.SelectedItem is not PortableRemoteEntry entry)
+        if (_entries.SelectedItem is not PortableRemoteEntry entry || _busy)
             return;
         var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
@@ -118,8 +171,53 @@ internal sealed class RemoteFilesWindow : Window
         });
         if (folders.FirstOrDefault() is not { } folder)
             return;
+        _busy = true;
         _status.Text = "Скачивание…";
-        var result = await _adb.PullAsync(_serial, entry.Path, folder.Path.LocalPath, CancellationToken.None);
-        _status.Text = result.IsSuccess ? $"Скачано: {entry.Name}" : result.Message;
+        try
+        {
+            var result = await _adb.PullAsync(_serial, entry.Path, folder.Path.LocalPath, _lifetime.Token);
+            _status.Text = result.IsSuccess ? $"Скачано: {entry.Name}" : result.Message;
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private string CreatePreviewPath(PortableRemoteEntry entry)
+    {
+        var serialKey = Hash(_serial)[..12];
+        var fileKey = Hash(entry.Path)[..16];
+        var extension = Path.GetExtension(entry.Name);
+        if (extension.Length > 16 || extension.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+            extension = string.Empty;
+        var directory = Path.Combine(Path.GetTempPath(), "DeviceWidget", "Previews", serialKey);
+        Directory.CreateDirectory(directory);
+        return Path.Combine(directory, $"preview-{fileKey}{extension}");
+    }
+
+    private static string Hash(string value) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
+
+    private static void OpenLocalFile(string path)
+    {
+        ProcessStartInfo info;
+        if (OperatingSystem.IsWindows())
+            info = new ProcessStartInfo(path) { UseShellExecute = true };
+        else if (OperatingSystem.IsMacOS())
+        {
+            info = new ProcessStartInfo("/usr/bin/open") { UseShellExecute = false };
+            info.ArgumentList.Add(path);
+        }
+        else
+        {
+            info = new ProcessStartInfo("xdg-open") { UseShellExecute = false };
+            info.ArgumentList.Add(path);
+        }
+        if (Process.Start(info) is null)
+            throw new InvalidOperationException("Системное приложение для этого типа файла не найдено.");
     }
 }
