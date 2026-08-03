@@ -3,7 +3,8 @@ using System.Text.RegularExpressions;
 
 namespace AndroidWidget.Desktop;
 
-internal sealed record PortableAdbDevice(string Serial, string Name, bool Wireless);
+internal sealed record PortableAdbDevice(string Serial, string Name, string Manufacturer,
+    string AndroidVersion, int? BatteryPercent, bool Wireless);
 internal sealed record PortableCommandResult(int ExitCode, string Output, string Error)
 {
     public bool IsSuccess => ExitCode == 0;
@@ -12,14 +13,17 @@ internal sealed record PortableCommandResult(int ExitCode, string Output, string
 
 internal sealed class PortableAdbService
 {
+    private readonly Dictionary<string, Process> _recordings = new(StringComparer.Ordinal);
+
     public async Task<IReadOnlyList<PortableAdbDevice>> GetDevicesAsync(CancellationToken cancellationToken)
     {
         var result = await RunAsync("adb", ["devices", "-l"], cancellationToken, TimeSpan.FromSeconds(10));
         if (!result.IsSuccess)
             throw new InvalidOperationException(result.Message);
-        return result.Output.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
+        var devices = result.Output.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
             .Select(line => line.Trim()).Where(line => !line.StartsWith("List of devices") && !line.StartsWith('*'))
             .Select(ParseDevice).Where(device => device is not null).Cast<PortableAdbDevice>().ToList();
+        return await Task.WhenAll(devices.Select(device => EnrichAsync(device, cancellationToken)));
     }
 
     public Task<PortableCommandResult> PushAsync(string serial, string localPath, CancellationToken token) =>
@@ -36,9 +40,69 @@ internal sealed class PortableAdbService
         RunBinaryAsync("adb", ["-s", serial, "exec-out", "screencap", "-p"], outputPath, token,
             TimeSpan.FromSeconds(30));
 
+    public Task<PortableCommandResult> InstallAsync(string serial, string apkPath, CancellationToken token) =>
+        RunAsync("adb", ["-s", serial, "install", "-r", apkPath], token, TimeSpan.FromMinutes(10));
+
+    public Task<PortableCommandResult> SendTextAsync(string serial, string text, CancellationToken token)
+    {
+        var escaped = text.Replace("%", "%25", StringComparison.Ordinal)
+            .Replace(" ", "%s", StringComparison.Ordinal)
+            .Replace("&", "\\&", StringComparison.Ordinal)
+            .Replace("<", "\\<", StringComparison.Ordinal)
+            .Replace(">", "\\>", StringComparison.Ordinal);
+        return RunAsync("adb", ["-s", serial, "shell", "input", "text", escaped], token,
+            TimeSpan.FromSeconds(30));
+    }
+
+    public Task<PortableCommandResult> TogglePowerAsync(string serial, CancellationToken token) =>
+        RunAsync("adb", ["-s", serial, "shell", "input", "keyevent", "26"], token,
+            TimeSpan.FromSeconds(15));
+
+    public PortableCommandResult StartShell(string serial)
+    {
+        if (!IsValidSerial(serial))
+            return new PortableCommandResult(1, "", "Некорректный serial устройства.");
+        try
+        {
+            ProcessStartInfo info;
+            if (OperatingSystem.IsWindows())
+            {
+                info = new ProcessStartInfo("cmd.exe") { UseShellExecute = true };
+                info.ArgumentList.Add("/k");
+                info.ArgumentList.Add($"adb -s {serial} shell");
+            }
+            else if (OperatingSystem.IsMacOS())
+            {
+                info = new ProcessStartInfo("/usr/bin/open") { UseShellExecute = false };
+                info.ArgumentList.Add("-a");
+                info.ArgumentList.Add("Terminal");
+                info.ArgumentList.Add("--args");
+                info.ArgumentList.Add("adb");
+                info.ArgumentList.Add("-s");
+                info.ArgumentList.Add(serial);
+                info.ArgumentList.Add("shell");
+            }
+            else
+            {
+                info = new ProcessStartInfo("x-terminal-emulator") { UseShellExecute = false };
+                info.ArgumentList.Add("-e");
+                info.ArgumentList.Add("adb");
+                info.ArgumentList.Add("-s");
+                info.ArgumentList.Add(serial);
+                info.ArgumentList.Add("shell");
+            }
+            Process.Start(info);
+            return new PortableCommandResult(0, "ADB shell открыт", "");
+        }
+        catch (Exception ex)
+        {
+            return new PortableCommandResult(1, "", $"Не удалось открыть терминал: {ex.Message}");
+        }
+    }
+
     public PortableCommandResult StartScrcpy(string serial, string? recordingPath = null)
     {
-        if (!Regex.IsMatch(serial, "^[a-zA-Z0-9._:-]+$"))
+        if (!IsValidSerial(serial))
             return new PortableCommandResult(1, "", "Некорректный serial устройства.");
         try
         {
@@ -50,12 +114,43 @@ internal sealed class PortableAdbService
             info.ArgumentList.Add("--max-fps=60");
             if (recordingPath is not null)
                 info.ArgumentList.Add($"--record={Path.GetFullPath(recordingPath)}");
-            Process.Start(info);
+            var process = Process.Start(info);
+            if (recordingPath is not null && process is not null)
+            {
+                if (_recordings.Remove(serial, out var previous))
+                    previous.Dispose();
+                _recordings[serial] = process;
+            }
             return new PortableCommandResult(0, recordingPath ?? "scrcpy запущен", "");
         }
         catch (Exception ex)
         {
             return new PortableCommandResult(1, "", $"Не удалось запустить scrcpy из PATH: {ex.Message}");
+        }
+    }
+
+    public bool IsRecording(string serial) =>
+        _recordings.TryGetValue(serial, out var process) && !process.HasExited;
+
+    public PortableCommandResult StopRecording(string serial)
+    {
+        if (!_recordings.Remove(serial, out var process))
+            return new PortableCommandResult(1, "", "Активная запись не найдена.");
+        try
+        {
+            if (!process.HasExited)
+            {
+                process.CloseMainWindow();
+                if (!process.WaitForExit(3000))
+                    process.Kill(true);
+            }
+            process.Dispose();
+            return new PortableCommandResult(0, "Запись сохранена", "");
+        }
+        catch (Exception ex)
+        {
+            process.Dispose();
+            return new PortableCommandResult(1, "", ex.Message);
         }
     }
 
@@ -66,8 +161,42 @@ internal sealed class PortableAdbService
             return null;
         var model = parts.FirstOrDefault(part => part.StartsWith("model:", StringComparison.OrdinalIgnoreCase))?[6..]
             ?.Replace('_', ' ') ?? "Android";
-        return new PortableAdbDevice(parts[0], model, parts[0].Contains(':'));
+        return new PortableAdbDevice(parts[0], model, string.Empty, string.Empty, null,
+            parts[0].Contains(':'));
     }
+
+    private static async Task<PortableAdbDevice> EnrichAsync(PortableAdbDevice device,
+        CancellationToken cancellationToken)
+    {
+        var manufacturerTask = GetPropertyAsync(device.Serial, "ro.product.manufacturer", cancellationToken);
+        var modelTask = GetPropertyAsync(device.Serial, "ro.product.model", cancellationToken);
+        var versionTask = GetPropertyAsync(device.Serial, "ro.build.version.release", cancellationToken);
+        var batteryTask = RunAsync("adb", ["-s", device.Serial, "shell", "dumpsys", "battery"],
+            cancellationToken, TimeSpan.FromSeconds(8));
+        await Task.WhenAll(manufacturerTask, modelTask, versionTask, batteryTask);
+        var batteryMatch = Regex.Match(batteryTask.Result.Output, @"(?m)^\s*level:\s*(\d+)");
+        var battery = batteryMatch.Success && int.TryParse(batteryMatch.Groups[1].Value, out var value)
+            ? value
+            : (int?)null;
+        var model = modelTask.Result;
+        return device with
+        {
+            Name = string.IsNullOrWhiteSpace(model) ? device.Name : model,
+            Manufacturer = manufacturerTask.Result,
+            AndroidVersion = versionTask.Result,
+            BatteryPercent = battery
+        };
+    }
+
+    private static async Task<string> GetPropertyAsync(string serial, string property,
+        CancellationToken cancellationToken)
+    {
+        var result = await RunAsync("adb", ["-s", serial, "shell", "getprop", property], cancellationToken,
+            TimeSpan.FromSeconds(8));
+        return result.IsSuccess ? result.Output.Trim() : string.Empty;
+    }
+
+    private static bool IsValidSerial(string serial) => Regex.IsMatch(serial, "^[a-zA-Z0-9._:-]+$");
 
     private static async Task<PortableCommandResult> RunAsync(string executable, IEnumerable<string> arguments,
         CancellationToken cancellationToken, TimeSpan timeout)

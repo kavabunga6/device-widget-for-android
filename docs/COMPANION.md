@@ -1,9 +1,10 @@
 # Device Widget Companion
 
-## Сопряжение из основного Windows-виджета
+## Сопряжение из основного виджета
 
-Основной WPF-виджет сам запускает защищённый Companion Host. Отдельный
-`AndroidWidget.Desktop` для Windows-сценария не требуется.
+Общий Avalonia-виджет для Windows, macOS и Linux сам запускает защищённый
+Companion Host. Во всех desktop-релизах используется проект
+`src/AndroidWidget.Desktop` с одинаковым интерфейсом и поведением.
 
 1. Нажмите **Компаньон** в карточке нужного телефона и подтвердите установку.
    После успешного `adb install` приложение автоматически откроется на телефоне.
@@ -153,10 +154,10 @@ dotnet run --project tools/CompanionHostSmoke/CompanionHostSmoke.csproj -c Relea
 
 Smoke-тест создаёт временный сертификат, проверяет его fingerprint независимым TLS-клиентом, проходит pairing и передаёт тестовые status/notification. Временные ключи и каталог удаляются после теста.
 
-## Текущие границы preview
+## Текущие границы
 
-- передача файлов, APK и трансляция экрана пока остаются в Windows ADB-виджете;
-- desktop companion пока является отдельным Avalonia-приложением, а не заменой всего WPF UI;
-- QR pairing, команды desktop → phone, снимки экрана и передача файлов входят в следующий протокольный этап;
-- на macOS и Linux нужны runtime smoke-тесты и упаковка (`.app`, deb/rpm/AppImage); исходный Avalonia-проект уже не содержит Windows API;
+- Windows, macOS и Linux releases используют общий Avalonia-виджет и одинаковую панель основных ADB/scrcpy-действий;
+- системные `adb`, `scrcpy` и terminal integration могут отличаться по способу установки, но вызываются единым UI;
+- QR pairing и расширенный удалённый браузер файлов остаются следующим протокольным этапом;
+- macOS и Linux проверяются нативными runtime smoke-тестами release workflows;
 - Android 17 при переходе на target SDK 37 потребует отдельного runtime-разрешения на локальную сеть.

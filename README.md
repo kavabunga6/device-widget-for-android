@@ -57,13 +57,17 @@ Companion не устанавливается автоматически. Уст
 
 | Платформа | Архитектуры | Интерфейс | ADB и scrcpy |
 |---|---|---|---|
-| Windows 10/11 | x64, ARM64 | WPF-виджет | входят в release-пакет |
-| macOS 14+ | Intel, Apple Silicon | Avalonia desktop host | используются из `PATH` |
-| Linux | x64, ARM64 | Avalonia desktop host | используются из `PATH` |
+| Windows 10/11 | x64, ARM64 | общий Avalonia-виджет | используются из `PATH` |
+| macOS 14+ | Intel, Apple Silicon | общий Avalonia-виджет | используются из `PATH` |
+| Linux | x64, ARM64 | общий Avalonia-виджет | используются из `PATH` |
 | Android 8.0+ | companion APK | сопряжение и статус соединения | не требуются |
 
-macOS и Linux используют общий Avalonia desktop host. `adb` и `scrcpy` на этих
-платформах устанавливаются системным пакетным менеджером.
+Windows, macOS и Linux используют один Avalonia desktop host с одинаковой
+телефонной карточкой, мини-режимом и панелью действий. `adb` и `scrcpy`
+устанавливаются системным пакетным менеджером и должны быть доступны через `PATH`.
+Когда подключённых устройств нет, карточка скрывается, а приложение продолжает
+работать через системный tray/menu bar. Из меню можно показать виджет, обновить
+список устройств, открыть настройки или завершить приложение.
 
 ## Настройка телефона
 
@@ -80,19 +84,12 @@ macOS и Linux используют общий Avalonia desktop host. `adb` и `
 
 ## Запуск из исходников
 
-Требования: .NET 8 SDK, Windows 10/11 и Android Platform Tools либо встроенный
-архив scrcpy.
+Требования: .NET 10 SDK, Android Platform Tools и scrcpy.
 
 ```powershell
 git clone https://github.com/kavabunga6/device-widget-for-android.git
 cd device-widget-for-android
-dotnet restore AndroidWidget.csproj
-dotnet run --project AndroidWidget.csproj
-```
-
-Avalonia desktop host:
-
-```powershell
+dotnet restore src/AndroidWidget.Desktop/AndroidWidget.Desktop.csproj
 dotnet run --project src/AndroidWidget.Desktop/AndroidWidget.Desktop.csproj
 ```
 
@@ -127,9 +124,9 @@ cd companion-android
 ## Проверка и release-сборка
 
 ```powershell
-dotnet build AndroidWidget.csproj -c Release -warnaserror
-dotnet format AndroidWidget.csproj --verify-no-changes
 dotnet build src/AndroidWidget.Desktop/AndroidWidget.Desktop.csproj -c Release -warnaserror
+dotnet format src/AndroidWidget.Desktop/AndroidWidget.Desktop.csproj --verify-no-changes
+dotnet build AndroidWidget.csproj -c Release -warnaserror
 dotnet run --project AndroidWidget.csproj -c Release -- --verify-scrcpy-bundle
 dotnet run --project AndroidWidget.csproj -c Release -- --verify-sms-parser
 dotnet run --project AndroidWidget.csproj -c Release -- --verify-companion-bundle
@@ -187,12 +184,12 @@ GPL-only опций; точные configure flags находятся в исхо
 ## Структура проекта
 
 ```text
-AndroidWidget.csproj                  Windows WPF composition root
+AndroidWidget.csproj                  legacy Windows WPF host and verification tools
 src/AndroidWidget.Core/               модели и независимые контракты
 src/AndroidWidget.Infrastructure/     ADB, scrcpy, настройки и интеграции
 src/AndroidWidget.Protocol/           versioned companion protocol
 src/AndroidWidget.CompanionHost/      WSS host, pairing and tokens
-src/AndroidWidget.Desktop/            Avalonia host for macOS/Linux/Windows
+src/AndroidWidget.Desktop/            common Avalonia widget for Windows/macOS/Linux releases
 companion-android/                     optional Android companion
 licenses/                              shipped license texts and notices
 third_party/sources/                   corresponding-source manifest

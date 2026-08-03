@@ -31,7 +31,7 @@ trap 'rm -rf "$work_root"' EXIT
 
 publish_directory="$work_root/publish"
 package_directory="$work_root/DeviceWidget"
-binary="$package_directory/DeviceWidget.Desktop"
+binary="$package_directory/DeviceWidget"
 archive="$output_directory/DeviceWidget-for-Android-$version-$rid.tar.gz"
 
 dotnet publish "$repo_root/src/AndroidWidget.Desktop/AndroidWidget.Desktop.csproj" \
@@ -58,7 +58,7 @@ if [[ "$rid" == "linux-arm64" && "$machine" != *"AArch64"* ]]; then
 fi
 
 tar -czf "$archive" -C "$work_root" DeviceWidget
-archive_mode="$(tar -tvzf "$archive" | awk '$NF == "DeviceWidget/DeviceWidget.Desktop" { print $1; exit }')"
+archive_mode="$(tar -tvzf "$archive" | awk '$NF == "DeviceWidget/DeviceWidget" { print $1; exit }')"
 if [[ "$archive_mode" != *x* ]]; then
   echo "Executable permission was not preserved in archive: $archive_mode" >&2
   exit 1

@@ -41,9 +41,9 @@ internal sealed class CompanionCertificateStore
         Convert.ToHexString(SHA256.HashData(certificate.RawData)).ToLowerInvariant();
 
     private static X509Certificate2 LoadCertificate(string path) =>
-        new(File.ReadAllBytes(path), string.Empty, OperatingSystem.IsWindows()
-            ? X509KeyStorageFlags.DefaultKeySet
-            : X509KeyStorageFlags.EphemeralKeySet);
+        new(File.ReadAllBytes(path), (string?)null, OperatingSystem.IsLinux()
+            ? X509KeyStorageFlags.EphemeralKeySet
+            : X509KeyStorageFlags.DefaultKeySet);
 
     private static void TryRestrictFilePermissions(string path)
     {

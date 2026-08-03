@@ -49,7 +49,7 @@ dotnet publish "$repo_root/src/AndroidWidget.Desktop/AndroidWidget.Desktop.cspro
   --output "$publish_directory"
 
 mkdir -p "$macos" "$resources" "$iconset"
-cp "$publish_directory/DeviceWidget.Desktop" "$macos/DeviceWidget"
+cp "$publish_directory/DeviceWidget" "$macos/DeviceWidget"
 cp "$publish_directory/LICENSE" "$resources/LICENSE"
 cp "$publish_directory/THIRD_PARTY_NOTICES.md" "$resources/THIRD_PARTY_NOTICES.md"
 cp "$publish_directory/SOURCE_OFFER.md" "$resources/SOURCE_OFFER.md"
@@ -110,7 +110,7 @@ if [[ " $binary_architectures " != *" $expected_architecture "* ]]; then
 fi
 
 COPYFILE_DISABLE=1 tar -czf "$archive" -C "$work_root" "Device Widget.app"
-archive_mode="$(tar -tvzf "$archive" | awk '$NF == "DeviceWidget" { print $1; exit }')"
+archive_mode="$(tar -tvzf "$archive" | awk '$0 ~ /\/DeviceWidget$/ { print $1; exit }')"
 if [[ "$archive_mode" != *x* ]]; then
   echo "Executable permission was not preserved in archive: $archive_mode" >&2
   exit 1

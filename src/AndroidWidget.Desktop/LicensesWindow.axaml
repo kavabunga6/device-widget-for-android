@@ -1,0 +1,68 @@
+<Window x:Class="AndroidWidget.Desktop.LicensesWindow"
+        xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Лицензии Device Widget" Icon="/Assets/AppIcon.png"
+        Width="620" Height="600" MinWidth="520" MinHeight="480"
+        WindowStartupLocation="CenterOwner" Background="Transparent"
+        TransparencyLevelHint="Transparent" WindowDecorations="None">
+  <Window.Styles>
+    <Style Selector="Button.action">
+      <Setter Property="Height" Value="36"/><Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="Background" Value="{DynamicResource MutedSurface}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource Border}"/>
+      <Setter Property="Foreground" Value="{DynamicResource Primary}"/>
+      <Setter Property="Padding" Value="14,0"/>
+      <Setter Property="HorizontalContentAlignment" Value="Center"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="TextBox.licenseText">
+      <Setter Property="IsReadOnly" Value="True"/>
+      <Setter Property="AcceptsReturn" Value="True"/>
+      <Setter Property="TextWrapping" Value="Wrap"/>
+      <Setter Property="FontFamily" Value="Menlo,Consolas,monospace"/>
+      <Setter Property="FontSize" Value="11"/>
+      <Setter Property="Padding" Value="14"/>
+      <Setter Property="Background" Value="{DynamicResource InputSurface}"/>
+      <Setter Property="Foreground" Value="{DynamicResource Primary}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource Border}"/>
+      <Setter Property="CornerRadius" Value="11"/>
+    </Style>
+  </Window.Styles>
+  <Border CornerRadius="18" Background="{DynamicResource WindowSurface}"
+          BorderBrush="{DynamicResource Border}" BorderThickness="1"
+          BoxShadow="0 12 32 0 #77000000">
+    <Grid RowDefinitions="44,Auto,*,58">
+      <Grid Margin="14,0,10,0" ColumnDefinitions="Auto,*,Auto" PointerPressed="TitleBar_PointerPressed">
+        <Border Width="22" Height="28" CornerRadius="7" BorderBrush="#8A73FF"
+                BorderThickness="1.4" VerticalAlignment="Center">
+          <TextBlock Text="▯" Foreground="#8A73FF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Border>
+        <StackPanel Grid.Column="1" Margin="8,7,0,0">
+          <TextBlock Text="Лицензии" FontSize="11" Foreground="{DynamicResource Primary}"/>
+          <TextBlock Text="Device Widget" FontSize="9" Foreground="{DynamicResource Secondary}"/>
+        </StackPanel>
+        <Button Grid.Column="2" Width="34" Height="34" Padding="0" CornerRadius="17"
+                HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                Background="{DynamicResource MutedSurface}" Click="CloseButton_Click">
+          <Viewbox Width="12" Height="12"><Canvas Width="12" Height="12"><Path Data="M 1.5,1.5 L 10.5,10.5 M 10.5,1.5 L 1.5,10.5" Stroke="{DynamicResource Primary}" StrokeThickness="1.8" StrokeLineCap="Round"/></Canvas></Viewbox>
+        </Button>
+      </Grid>
+      <StackPanel Grid.Row="1" Margin="24,12,24,14">
+        <TextBlock Text="Лицензии и компоненты" FontSize="23" FontWeight="SemiBold"
+                   Foreground="{DynamicResource Primary}"/>
+        <TextBlock Text="Документы встроены в приложение и доступны без интернета"
+                   Margin="0,5,0,0" Foreground="{DynamicResource Secondary}"/>
+      </StackPanel>
+      <TabControl Grid.Row="2" Margin="24,0">
+        <TabItem Header="Device Widget">
+          <TextBox x:Name="LicenseText" Classes="licenseText"/>
+        </TabItem>
+        <TabItem Header="Сторонние компоненты">
+          <TextBox x:Name="ThirdPartyText" Classes="licenseText"/>
+        </TabItem>
+      </TabControl>
+      <Button Grid.Row="3" Classes="action" Content="Готово" Width="104"
+              HorizontalAlignment="Right" Margin="0,6,24,16" Click="CloseButton_Click"/>
+    </Grid>
+  </Border>
+</Window>

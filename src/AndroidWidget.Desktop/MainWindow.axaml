@@ -2,160 +2,263 @@
         xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Device Widget for Android" Icon="/Assets/AppIcon.png"
-        Width="720" Height="610" MinWidth="620" MinHeight="520"
-        Background="#202124" WindowStartupLocation="CenterScreen">
-  <Window.Resources>
-    <SolidColorBrush x:Key="Surface" Color="#2B2D31" />
-    <SolidColorBrush x:Key="Border" Color="#454850" />
-    <SolidColorBrush x:Key="Primary" Color="#F7F7F8" />
-    <SolidColorBrush x:Key="Secondary" Color="#C5C7CE" />
-    <SolidColorBrush x:Key="Accent" Color="#8B7CFF" />
-  </Window.Resources>
+        Width="258" Height="392" MinWidth="258" MinHeight="392"
+        Background="Transparent" TransparencyLevelHint="Transparent" WindowDecorations="None"
+        CanResize="False" ShowInTaskbar="True" Topmost="True"
+        WindowStartupLocation="CenterScreen">
+  <Window.Styles>
+    <Style Selector="Button.chrome">
+      <Setter Property="Width" Value="26" />
+      <Setter Property="Height" Value="26" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Foreground" Value="{DynamicResource Secondary}" />
+      <Setter Property="FontSize" Value="19" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.tile">
+      <Setter Property="Height" Value="82" />
+      <Setter Property="Width" Value="88" />
+      <Setter Property="Margin" Value="2" />
+      <Setter Property="Padding" Value="3" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Foreground" Value="{DynamicResource Primary}" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.compact">
+      <Setter Property="Padding" Value="10,7" />
+      <Setter Property="CornerRadius" Value="10" />
+    </Style>
+    <Style Selector="TextBox.compact">
+      <Setter Property="MinHeight" Value="34" />
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="CornerRadius" Value="9" />
+    </Style>
+  </Window.Styles>
 
-  <ScrollViewer>
-    <Grid Margin="28" RowDefinitions="Auto,Auto,Auto,Auto,*">
-      <Grid ColumnDefinitions="*,Auto">
-        <StackPanel>
-          <TextBlock Text="Device Widget" FontSize="27" FontWeight="SemiBold" Foreground="{StaticResource Primary}" />
-          <StackPanel Orientation="Horizontal" Margin="0,4,0,0" Spacing="8">
-            <TextBlock Text="Companion desktop · Windows / macOS / Linux"
-                       Foreground="{StaticResource Secondary}" />
-            <TextBlock x:Name="ProductVersionText" Foreground="{StaticResource Accent}"
-                       FontWeight="SemiBold" />
-          </StackPanel>
-        </StackPanel>
-        <Border Grid.Column="1" CornerRadius="14" Padding="12,7" Background="#263C34">
-          <TextBlock x:Name="HostStatusText" Text="Запуск…" Foreground="#74D8A4" />
+  <Grid x:Name="RootLayout" ColumnDefinitions="Auto,Auto" Margin="4">
+    <Border x:Name="PhoneShell" Width="242" Height="376" VerticalAlignment="Top" CornerRadius="38" Margin="4"
+            Background="{DynamicResource Shell}" BorderBrush="{DynamicResource Border}" BorderThickness="1.2"
+            PointerPressed="PhoneShell_PointerPressed"
+            BoxShadow="0 8 20 0 #66000000">
+      <Grid Margin="9">
+        <Border CornerRadius="30" Background="{DynamicResource Screen}"
+                BorderBrush="#343945" BorderThickness="1">
+          <Grid>
+            <Grid x:Name="FullPhoneContent" RowDefinitions="35,*,49">
+              <Grid Grid.Row="0" Margin="13,0,9,0" ColumnDefinitions="*,Auto,Auto,Auto,Auto"
+                    Background="Transparent" PointerPressed="DragHandle_PointerPressed">
+                <TextBlock Text="ADB" FontSize="10" FontWeight="SemiBold"
+                           Foreground="{DynamicResource Secondary}" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Classes="chrome" Content="−" FontSize="22"
+                        ToolTip.Tip="Мини-виджет" Click="MiniModeButton_Click" />
+                <Button Grid.Column="2" Classes="chrome" Content="⚙" FontSize="20"
+                        ToolTip.Tip="Настройки" Click="SettingsButton_Click" />
+                <Button x:Name="PinButton" Grid.Column="3" Classes="chrome" Content="●" FontSize="17"
+                        Foreground="{DynamicResource Accent}" ToolTip.Tip="Поверх остальных окон"
+                        Click="PinButton_Click" />
+                <Button Grid.Column="4" Classes="chrome" ToolTip.Tip="Закрыть" Click="CloseButton_Click">
+                  <Viewbox Width="11" Height="11"><Canvas Width="12" Height="12"><Path Data="M 1.5,1.5 L 10.5,10.5 M 10.5,1.5 L 1.5,10.5" Stroke="{DynamicResource Secondary}" StrokeThickness="1.8" StrokeLineCap="Round"/></Canvas></Viewbox>
+                </Button>
+              </Grid>
+
+              <StackPanel Grid.Row="1" Margin="17,0" VerticalAlignment="Center"
+                          Background="Transparent" PointerPressed="PhoneScreen_PointerPressed">
+                <Border Width="62" Height="62" CornerRadius="21" HorizontalAlignment="Center"
+                        Background="#302B50" BorderBrush="{DynamicResource Accent}" BorderThickness="1">
+                  <Grid>
+                    <Ellipse Width="31" Height="23" Fill="{DynamicResource Accent}" VerticalAlignment="Center" />
+                    <Ellipse Width="3" Height="3" Fill="White" Margin="-10,-2,0,0" />
+                    <Ellipse Width="3" Height="3" Fill="White" Margin="10,-2,0,0" />
+                    <Border Width="2" Height="8" CornerRadius="1" Background="{DynamicResource Accent}"
+                            Margin="-18,-31,0,0" RenderTransformOrigin="0.5,1">
+                      <Border.RenderTransform><RotateTransform Angle="-30" /></Border.RenderTransform>
+                    </Border>
+                    <Border Width="2" Height="8" CornerRadius="1" Background="{DynamicResource Accent}"
+                            Margin="18,-31,0,0" RenderTransformOrigin="0.5,1">
+                      <Border.RenderTransform><RotateTransform Angle="30" /></Border.RenderTransform>
+                    </Border>
+                  </Grid>
+                </Border>
+                <TextBlock x:Name="DeviceNameText" Text="Ищу устройство…" Margin="0,12,0,2"
+                           FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource Primary}"
+                           TextAlignment="Center" TextWrapping="Wrap" MaxHeight="36" />
+                <TextBlock x:Name="ConnectionText" Text="ADB"
+                           FontSize="10.5" Foreground="{DynamicResource Secondary}"
+                           TextAlignment="Center" TextWrapping="Wrap" MaxHeight="30" />
+                <Grid x:Name="BatteryPanel" Margin="16,13,16,0" ColumnDefinitions="*,Auto">
+                  <ProgressBar x:Name="BatteryBar" Height="5" Minimum="0" Maximum="100" Value="0"
+                               Foreground="#72D8A2" Background="#3C424D" VerticalAlignment="Center" />
+                  <TextBlock x:Name="BatteryText" Grid.Column="1" Text="—" Margin="9,0,0,0"
+                             FontSize="10" Foreground="{DynamicResource Secondary}" />
+                </Grid>
+                <Button Margin="0,14,0,0" Width="184" Height="34" Padding="8,0" Classes="compact"
+                        HorizontalAlignment="Center" HorizontalContentAlignment="Center"
+                        VerticalContentAlignment="Center"
+                        Background="{DynamicResource MutedSurface}" BorderBrush="{DynamicResource Border}"
+                        Click="FilesButton_Click">
+                  <TextBlock x:Name="DropHintText" Text="Перетащите файл или APK" FontSize="9.5"
+                             Foreground="{DynamicResource Primary}" />
+                </Button>
+                <StackPanel Margin="0,8,0,0">
+                  <Border x:Name="LatestMessageBorder" IsVisible="False" Padding="10,7" Margin="0,0,0,7"
+                          CornerRadius="12,12,12,3" Background="#332D56">
+                    <TextBlock x:Name="LatestMessageText" FontSize="10" TextWrapping="Wrap"
+                               MaxHeight="42" Foreground="#E8E4FF" />
+                  </Border>
+                  <TextBlock x:Name="StatusText" Text="Нажмите, чтобы открыть действия"
+                             FontSize="9.5" Foreground="{DynamicResource Secondary}"
+                             TextAlignment="Center" TextWrapping="Wrap" MaxHeight="30" />
+                </StackPanel>
+              </StackPanel>
+
+              <Grid Grid.Row="2">
+                <Border Width="72" Height="4" CornerRadius="2" Background="#5D6472"
+                        HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,11" />
+              </Grid>
+            </Grid>
+
+            <Grid x:Name="MiniContent" IsVisible="False" Margin="10,13,10,12"
+                  RowDefinitions="38,30,*,30" PointerPressed="MiniContent_PointerPressed">
+              <Grid.ContextMenu>
+                <ContextMenu>
+                  <MenuItem Header="Развернуть" Click="RestoreFromMiniMenu_Click" />
+                  <MenuItem Header="Действия" Click="OpenActionsFromMiniMenu_Click" />
+                  <Separator />
+                  <MenuItem Header="Настройки" Click="SettingsButton_Click" />
+                  <MenuItem Header="Закрыть" Click="CloseButton_Click" />
+                </ContextMenu>
+              </Grid.ContextMenu>
+              <TextBlock x:Name="MiniDeviceNameText" Text="Android" FontSize="11.5" FontWeight="Bold"
+                         Foreground="{DynamicResource Primary}" TextAlignment="Center" TextWrapping="Wrap"
+                         TextTrimming="CharacterEllipsis" MaxHeight="34" />
+              <TextBlock x:Name="MiniConnectionText" Grid.Row="1" Text="USB / ADB" FontSize="9"
+                         Foreground="{DynamicResource Secondary}" TextAlignment="Center" TextWrapping="Wrap" />
+              <TextBlock x:Name="MiniBatteryText" Grid.Row="2" Text="—" FontSize="22"
+                         FontWeight="SemiBold" Foreground="{DynamicResource Primary}"
+                         TextAlignment="Center" VerticalAlignment="Center" />
+              <TextBlock x:Name="MiniDetailText" Grid.Row="3" Text="Ожидаю устройство" FontSize="9"
+                         FontWeight="SemiBold" Foreground="{DynamicResource Secondary}"
+                         TextAlignment="Center" TextWrapping="Wrap" VerticalAlignment="Center" />
+              <Ellipse x:Name="MiniStatusDot" Grid.RowSpan="4" Width="10" Height="10" Fill="#69738E"
+                       Stroke="{DynamicResource Screen}" StrokeThickness="2" HorizontalAlignment="Right"
+                       VerticalAlignment="Bottom" Margin="0,0,-2,-4" />
+              <Border Grid.RowSpan="4" Width="20" Height="3" CornerRadius="2" Background="{DynamicResource Accent}"
+                      HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,-7" />
+            </Grid>
+          </Grid>
         </Border>
+        <Border Width="3" Height="34" CornerRadius="2" Background="#687084"
+                HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,-6,-45" />
+        <Border Width="3" Height="46" CornerRadius="2" Background="#687084"
+                HorizontalAlignment="Left" VerticalAlignment="Center" Margin="-6,0,0,-5" />
       </Grid>
+    </Border>
 
-      <Border Grid.Row="1" Margin="0,22,0,0" Padding="18" CornerRadius="18"
-              Background="{StaticResource Surface}" BorderBrush="{StaticResource Border}" BorderThickness="1">
-        <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
+    <Border x:Name="ActionDrawer" Grid.Column="1" IsVisible="False" Width="318" Height="500"
+            VerticalAlignment="Top" Margin="4"
+            Padding="14" CornerRadius="24" Background="{DynamicResource Surface}"
+            BorderBrush="{DynamicResource Border}" BorderThickness="1">
+      <Grid RowDefinitions="Auto,*,Auto">
+        <Grid ColumnDefinitions="*,Auto">
           <StackPanel>
-            <TextBlock Text="Устройства ADB" FontSize="17" FontWeight="SemiBold"
-                       Foreground="{StaticResource Primary}" />
-            <TextBlock Text="Общий UI использует adb и scrcpy из PATH на Windows, macOS и Linux"
-                       Margin="0,4,0,0" Foreground="{StaticResource Secondary}" />
+            <TextBlock Text="Действия" FontSize="19" FontWeight="SemiBold"
+                       Foreground="{DynamicResource Primary}" />
+            <TextBlock x:Name="ProductVersionText" Margin="0,3,0,0" FontSize="10"
+                       Foreground="{DynamicResource Secondary}" />
           </StackPanel>
-          <Button Grid.Column="1" Content="Обновить" Padding="16,8" Click="RefreshAdbButton_Click" />
-
-          <Grid Grid.Row="1" Grid.ColumnSpan="2" Margin="0,14,0,0" ColumnDefinitions="*,Auto,Auto,Auto,Auto">
-            <ComboBox x:Name="AdbDeviceCombo" PlaceholderText="Подключите устройство по ADB"
-                      DisplayMemberBinding="{Binding Label}" />
-            <Button Grid.Column="1" Content="Экран" Margin="8,0,0,0" Click="AdbScreenButton_Click" />
-            <Button Grid.Column="2" Content="Запись" Margin="8,0,0,0" Click="AdbRecordButton_Click" />
-            <Button Grid.Column="3" Content="Скриншот" Margin="8,0,0,0" Click="AdbScreenshotButton_Click" />
-            <Button Grid.Column="4" Content="Отправить файл" Margin="8,0,0,0" Click="AdbPushButton_Click" />
-          </Grid>
-
-          <Grid Grid.Row="2" Grid.ColumnSpan="2" Margin="0,12,0,0"
-                ColumnDefinitions="*,110,Auto,*,Auto">
-            <TextBox x:Name="WirelessEndpointText" PlaceholderText="host:port для pairing/connect" />
-            <TextBox x:Name="WirelessCodeText" Grid.Column="1" Margin="8,0,0,0" PlaceholderText="6 цифр" MaxLength="6" />
-            <Button Grid.Column="2" Content="Сопрячь" Margin="8,0,0,0" Click="WirelessPairButton_Click" />
-            <TextBlock x:Name="AdbStatusText" Grid.Column="3" Margin="14,0,0,0"
-                       Foreground="{StaticResource Secondary}" VerticalAlignment="Center"
-                       TextTrimming="CharacterEllipsis" />
-            <Button Grid.Column="4" Content="Подключить" Margin="8,0,0,0" Click="WirelessConnectButton_Click" />
-          </Grid>
+          <Button Grid.Column="1" Classes="chrome" Content="‹" FontSize="20"
+                  Click="CollapsePanel_Click" ToolTip.Tip="Скрыть действия" />
         </Grid>
-      </Border>
 
-      <Border Grid.Row="2" Margin="0,22,0,0" Padding="18" CornerRadius="18"
-              Background="{StaticResource Surface}" BorderBrush="{StaticResource Border}" BorderThickness="1">
-        <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
+        <ScrollViewer Grid.Row="1" Margin="0,10,0,0" VerticalScrollBarVisibility="Auto">
           <StackPanel>
-            <TextBlock Text="Подключить companion-приложение" FontSize="17" FontWeight="SemiBold"
-                       Foreground="{StaticResource Primary}" />
-            <TextBlock Text="Оба устройства должны быть в одной локальной сети"
-                       Margin="0,4,0,0" Foreground="{StaticResource Secondary}" />
-          </StackPanel>
-          <Button Grid.Column="1" Content="Новый код" Padding="18,9" Click="PairButton_Click" />
+            <UniformGrid Columns="3" Width="282" HorizontalAlignment="Center">
+              <Button Classes="tile" Click="ScreenButton_Click" ToolTip.Tip="Трансляция через scrcpy">
+                <StackPanel><Border Width="48" Height="48" CornerRadius="14" Background="#7559E8"><TextBlock Text="▣" FontSize="24" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="Экран" Margin="0,5,0,0" FontSize="10.5" HorizontalAlignment="Center"/></StackPanel>
+              </Button>
+              <Button Classes="tile" Click="RecordButton_Click" ToolTip.Tip="Запись экрана в MKV">
+                <StackPanel><Border Width="48" Height="48" CornerRadius="14" Background="#C34755"><TextBlock Text="●" FontSize="23" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock x:Name="RecordButtonText" Text="Запись" Margin="0,5,0,0" FontSize="10.5" HorizontalAlignment="Center"/></StackPanel>
+              </Button>
+              <Button Classes="tile" Click="FilesButton_Click" ToolTip.Tip="Отправить файлы на телефон">
+                <StackPanel><Border Width="48" Height="48" CornerRadius="14" Background="#E59A27"><TextBlock Text="▰" FontSize="23" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="Файлы" Margin="0,5,0,0" FontSize="10.5" HorizontalAlignment="Center"/></StackPanel>
+              </Button>
+              <Button Classes="tile" Click="TransfersButton_Click" ToolTip.Tip="Последняя операция передачи">
+                <StackPanel><Border Width="48" Height="48" CornerRadius="14" Background="#287D8E"><TextBlock Text="⇄" FontSize="24" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="Передачи" Margin="0,5,0,0" FontSize="10.5" HorizontalAlignment="Center"/></StackPanel>
+              </Button>
+              <Button Classes="tile" Click="ScreenshotButton_Click" ToolTip.Tip="Сохранить PNG-скриншот">
+                <StackPanel><Border Width="48" Height="48" CornerRadius="14" Background="#DD4F78"><TextBlock Text="◎" FontSize="25" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="Скриншот" Margin="0,5,0,0" FontSize="10.5" HorizontalAlignment="Center"/></StackPanel>
+              </Button>
+              <Button Classes="tile" Click="InstallButton_Click" ToolTip.Tip="Установить APK">
+                <StackPanel><Border Width="48" Height="48" CornerRadius="14" Background="#30A66B"><TextBlock Text="↓" FontSize="26" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="APK" Margin="0,5,0,0" FontSize="10.5" HorizontalAlignment="Center"/></StackPanel>
+              </Button>
+              <Button Classes="tile" Click="ShellButton_Click" ToolTip.Tip="Открыть ADB shell">
+                <StackPanel><Border Width="48" Height="48" CornerRadius="14" Background="#394252"><TextBlock Text=">_" FontSize="19" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="Shell" Margin="0,5,0,0" FontSize="10.5" HorizontalAlignment="Center"/></StackPanel>
+              </Button>
+              <Button Classes="tile" Click="ClipboardButton_Click" ToolTip.Tip="Отправить текст из буфера">
+                <StackPanel><Border Width="48" Height="48" CornerRadius="14" Background="#148E9E"><TextBlock Text="▤" FontSize="24" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="Буфер" Margin="0,5,0,0" FontSize="10.5" HorizontalAlignment="Center"/></StackPanel>
+              </Button>
+              <Button Classes="tile" Click="PowerButton_Click" ToolTip.Tip="Включить или выключить экран">
+                <StackPanel><Border Width="48" Height="48" CornerRadius="14" Background="#D54B43"><TextBlock Text="⏻" FontSize="24" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="Питание" Margin="0,5,0,0" FontSize="10.5" HorizontalAlignment="Center"/></StackPanel>
+              </Button>
+              <Button Classes="tile" Click="WirelessButton_Click" ToolTip.Tip="Wireless debugging">
+                <StackPanel><Border Width="48" Height="48" CornerRadius="14" Background="#326BB5"><TextBlock Text="⌁" FontSize="25" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="Wi-Fi ADB" Margin="0,5,0,0" FontSize="10.5" HorizontalAlignment="Center"/></StackPanel>
+              </Button>
+              <Button Classes="tile" Click="CompanionButton_Click" ToolTip.Tip="Сопряжение companion">
+                <StackPanel><Border Width="48" Height="48" CornerRadius="14" Background="#6157A8"><TextBlock Text="◫" FontSize="24" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="Компаньон" Margin="0,5,0,0" FontSize="10.5" HorizontalAlignment="Center"/></StackPanel>
+              </Button>
+              <Button Classes="tile" Click="RefreshButton_Click" ToolTip.Tip="Обновить устройства">
+                <StackPanel><Border Width="48" Height="48" CornerRadius="14" Background="#596273"><TextBlock Text="↻" FontSize="25" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="Обновить" Margin="0,5,0,0" FontSize="10.5" HorizontalAlignment="Center"/></StackPanel>
+              </Button>
+            </UniformGrid>
 
-          <Grid Grid.Row="1" Grid.ColumnSpan="2" Margin="0,16,0,0" ColumnDefinitions="Auto,*">
-            <Border Width="82" Height="62" CornerRadius="14" Background="#332D56">
-              <TextBlock x:Name="PairCodeText" Text="—— ——" FontSize="20" FontWeight="Bold"
-                         Foreground="{StaticResource Accent}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            <Border x:Name="WirelessPanel" IsVisible="False" Margin="3,9,3,3" Padding="10"
+                    CornerRadius="12" Background="{DynamicResource MutedSurface}">
+              <StackPanel>
+                <TextBlock Text="Wireless debugging" FontWeight="SemiBold" Foreground="{DynamicResource Primary}" />
+                <TextBox x:Name="WirelessEndpointText" Classes="compact" Margin="0,7,0,0" PlaceholderText="host:port" />
+                <Grid Margin="0,6,0,0" ColumnDefinitions="*,Auto">
+                  <TextBox x:Name="WirelessCodeText" Classes="compact" PlaceholderText="6 цифр" MaxLength="6" />
+                  <Button Grid.Column="1" Classes="compact" Margin="6,0,0,0" Content="Сопрячь" Click="WirelessPairButton_Click" />
+                </Grid>
+                <Button Classes="compact" Margin="0,6,0,0" Content="Подключить" Click="WirelessConnectButton_Click" />
+              </StackPanel>
             </Border>
-            <TextBox x:Name="PairingUriText" Grid.Column="1" Margin="12,0,0,0" IsReadOnly="True"
-                     PlaceholderText="Создайте одноразовый код сопряжения" TextWrapping="Wrap" />
-          </Grid>
 
-          <Grid Grid.Row="2" Grid.ColumnSpan="2" Margin="0,12,0,0" ColumnDefinitions="*,Auto">
-            <TextBlock x:Name="PairingHintText" Text="Код действует пять минут и принимается только один раз"
-                       Foreground="{StaticResource Secondary}" VerticalAlignment="Center" />
-            <Button Grid.Column="1" Content="Копировать ссылку" Click="CopyPairingButton_Click" />
-          </Grid>
-        </Grid>
-      </Border>
+            <Border x:Name="CompanionPanel" IsVisible="False" Margin="3,9,3,3" Padding="10"
+                    CornerRadius="12" Background="{DynamicResource MutedSurface}">
+              <StackPanel>
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="Companion" FontWeight="SemiBold" Foreground="{DynamicResource Primary}" />
+                  <Button Grid.Column="1" Classes="compact" Content="Новый код" Click="PairButton_Click" />
+                </Grid>
+                <TextBlock x:Name="HostStatusText" Text="Запуск защищённого host…" Margin="0,5,0,0"
+                           FontSize="10" Foreground="#72D8A2" />
+                <TextBlock x:Name="PairCodeText" Text="—— ——" Margin="0,8,0,0" FontSize="22"
+                           FontWeight="Bold" Foreground="{DynamicResource Accent}" />
+                <TextBox x:Name="PairingUriText" Classes="compact" Margin="0,6,0,0" IsReadOnly="True"
+                         PlaceholderText="Одноразовая ссылка сопряжения" />
+                <Grid Margin="0,6,0,0" ColumnDefinitions="*,Auto">
+                  <TextBlock x:Name="PairingHintText" Text="Код действует пять минут" FontSize="9.5"
+                             Foreground="{DynamicResource Secondary}" VerticalAlignment="Center" />
+                  <Button Grid.Column="1" Classes="compact" Content="Копировать" Click="CopyPairingButton_Click" />
+                </Grid>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
 
-      <Grid Grid.Row="3" Margin="0,22,0,0" ColumnDefinitions="*,*">
-        <TextBlock Text="Устройства" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource Primary}" />
-        <TextBlock Grid.Column="1" Text="Последние уведомления" FontSize="18" FontWeight="SemiBold"
-                   Foreground="{StaticResource Primary}" Margin="14,0,0,0" />
+        <StackPanel Grid.Row="2" Margin="3,7,3,0">
+          <TextBlock x:Name="PanelStatusText" Text="Готово" FontSize="10"
+                     Foreground="{DynamicResource Secondary}" TextTrimming="CharacterEllipsis" />
+        </StackPanel>
       </Grid>
-
-      <Grid Grid.Row="4" Margin="0,10,0,0" ColumnDefinitions="*,*">
-        <Border Padding="10" CornerRadius="16" Background="{StaticResource Surface}"
-                BorderBrush="{StaticResource Border}" BorderThickness="1">
-          <Grid>
-            <TextBlock x:Name="NoDevicesText" Text="Пока нет подключённых устройств" HorizontalAlignment="Center"
-                       VerticalAlignment="Center" Foreground="{StaticResource Secondary}" />
-            <ListBox x:Name="DevicesList" Background="Transparent" BorderThickness="0">
-              <ListBox.ItemTemplate>
-                <DataTemplate>
-                  <Border Margin="0,0,0,8" Padding="12" CornerRadius="12" Background="#24262A">
-                    <Grid ColumnDefinitions="Auto,*">
-                      <Border Width="38" Height="58" CornerRadius="10" Background="#15171B"
-                              BorderBrush="{StaticResource Accent}" BorderThickness="1.2">
-                        <TextBlock Text="●" Foreground="{Binding StatusColor}" HorizontalAlignment="Center"
-                                   VerticalAlignment="Bottom" Margin="0,0,0,7" />
-                      </Border>
-                      <StackPanel Grid.Column="1" Margin="12,2,0,0">
-                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{StaticResource Primary}" />
-                        <TextBlock Text="{Binding Detail}" Margin="0,4,0,0" FontSize="11"
-                                   Foreground="{StaticResource Secondary}" />
-                        <TextBlock Text="{Binding Battery}" Margin="0,5,0,0" FontSize="11"
-                                   Foreground="#74D8A4" />
-                        <Border Margin="0,9,0,0" Padding="10,7" CornerRadius="12,12,12,3"
-                                Background="#332D56" IsVisible="{Binding HasLatestMessage}">
-                          <TextBlock Text="{Binding LatestMessage}" FontSize="11" TextWrapping="Wrap"
-                                     MaxHeight="42" Foreground="#E8E4FF" />
-                        </Border>
-                      </StackPanel>
-                    </Grid>
-                  </Border>
-                </DataTemplate>
-              </ListBox.ItemTemplate>
-            </ListBox>
-          </Grid>
-        </Border>
-
-        <Border Grid.Column="1" Margin="14,0,0,0" Padding="10" CornerRadius="16"
-                Background="{StaticResource Surface}" BorderBrush="{StaticResource Border}" BorderThickness="1">
-          <Grid>
-            <TextBlock x:Name="NoNotificationsText" Text="Уведомления появятся после выдачи доступа на телефоне"
-                       TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center"
-                       VerticalAlignment="Center" Foreground="{StaticResource Secondary}" />
-            <ListBox x:Name="NotificationsList" Background="Transparent" BorderThickness="0">
-              <ListBox.ItemTemplate>
-                <DataTemplate>
-                  <Border Margin="0,0,0,8" Padding="12" CornerRadius="12" Background="#24262A">
-                    <StackPanel>
-                      <TextBlock Text="{Binding AppName}" FontSize="10.5" Foreground="{StaticResource Accent}" />
-                      <TextBlock Text="{Binding Title}" Margin="0,4,0,0" FontWeight="SemiBold"
-                                 Foreground="{StaticResource Primary}" TextTrimming="CharacterEllipsis" />
-                      <TextBlock Text="{Binding Preview}" Margin="0,4,0,0" FontSize="11" MaxHeight="44"
-                                 Foreground="{StaticResource Secondary}" TextWrapping="Wrap" />
-                    </StackPanel>
-                  </Border>
-                </DataTemplate>
-              </ListBox.ItemTemplate>
-            </ListBox>
-          </Grid>
-        </Border>
-      </Grid>
-    </Grid>
-  </ScrollViewer>
+    </Border>
+  </Grid>
 </Window>

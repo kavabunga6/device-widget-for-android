@@ -2,6 +2,36 @@
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              RequestedThemeVariant="Dark">
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="WindowSurface" Color="#202124" />
+          <SolidColorBrush x:Key="Shell" Color="#181B22" />
+          <SolidColorBrush x:Key="Screen" Color="#22252C" />
+          <SolidColorBrush x:Key="Surface" Color="#2B2D31" />
+          <SolidColorBrush x:Key="MutedSurface" Color="#303238" />
+          <SolidColorBrush x:Key="Border" Color="#454850" />
+          <SolidColorBrush x:Key="Primary" Color="#F2F4F8" />
+          <SolidColorBrush x:Key="Secondary" Color="#AEB3C0" />
+          <SolidColorBrush x:Key="InputSurface" Color="#181A1E" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="WindowSurface" Color="#F4F5F8" />
+          <SolidColorBrush x:Key="Shell" Color="#DDE1E9" />
+          <SolidColorBrush x:Key="Screen" Color="#FAFBFD" />
+          <SolidColorBrush x:Key="Surface" Color="#FFFFFF" />
+          <SolidColorBrush x:Key="MutedSurface" Color="#E8EAF0" />
+          <SolidColorBrush x:Key="Border" Color="#B9BFCA" />
+          <SolidColorBrush x:Key="Primary" Color="#20242C" />
+          <SolidColorBrush x:Key="Secondary" Color="#5D6574" />
+          <SolidColorBrush x:Key="InputSurface" Color="#FFFFFF" />
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+      <SolidColorBrush x:Key="Accent" Color="#8A73FF" />
+      <SolidColorBrush x:Key="Error" Color="#FF6969" />
+    </ResourceDictionary>
+  </Application.Resources>
   <Application.Styles>
     <FluentTheme />
   </Application.Styles>

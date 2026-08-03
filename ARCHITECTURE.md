@@ -103,7 +103,7 @@ AndroidWidget.Desktop (Avalonia: Windows / macOS / Linux)
 
 - `AndroidWidget.Protocol` содержит только версионированные сообщения и JSON-настройки.
 - `AndroidWidget.CompanionHost` отвечает за сертификат, одноразовое сопряжение, токены и независимое состояние устройств.
-- `AndroidWidget.Desktop` отображает устройства и уведомления, а также предоставляет общий UI для ADB, scrcpy, снимков, записи и Wireless debugging; отключённая карточка удаляется, другая не занимает её состояние.
+- `AndroidWidget.Desktop` является общим release UI для Windows, macOS и Linux: телефонная карточка, мини-режим, системный tray/menu bar, единая панель ADB/scrcpy, снимков, записи, файлов, APK, clipboard, power, Wireless debugging и companion. При отсутствии устройств окно скрывается, но фоновый монитор остаётся активным.
 - `companion-android` содержит foreground-соединение, Android Keystore и `NotificationListenerService`.
 - `ICompanionService` отделяет read-only проверку пакета от явно вызываемой установки; UI вызывает установку только после отдельного пользовательского подтверждения.
 - `tools/CompanionHostSmoke` проходит настоящий WSS handshake, pairing, status и notification через независимый TLS-клиент.

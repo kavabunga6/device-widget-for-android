@@ -84,8 +84,8 @@ if (-not $hasAndroidSigning -and $apk -notmatch "unsigned") {
 Copy-Item -LiteralPath $apk -Destination (Join-Path $packageRoot "DeviceWidget-Companion-$Version.apk")
 
 $desktopTargets = @(
-    @{ Rid = "win-x64"; Project = "AndroidWidget.csproj" },
-    @{ Rid = "win-arm64"; Project = "AndroidWidget.csproj" }
+    @{ Rid = "win-x64"; Project = "src\AndroidWidget.Desktop\AndroidWidget.Desktop.csproj" },
+    @{ Rid = "win-arm64"; Project = "src\AndroidWidget.Desktop\AndroidWidget.Desktop.csproj" }
 )
 
 foreach ($target in $desktopTargets) {

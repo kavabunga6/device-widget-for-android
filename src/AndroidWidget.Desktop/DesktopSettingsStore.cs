@@ -1,0 +1,86 @@
+using System.Text.Json;
+
+namespace AndroidWidget.Desktop;
+
+internal sealed record DesktopSettings(
+    string Theme,
+    bool AutoStart,
+    bool ShowNotifications,
+    int NotificationDurationSeconds,
+    string ScreenshotFolder,
+    string RecordingFolder,
+    string ScrcpyPreset,
+    bool NotifyNewPhotos,
+    bool AutoImportPhotos,
+    string PhotoImportFolder,
+    bool Topmost)
+{
+    public static DesktopSettings Default => new(
+        "Dark",
+        false,
+        true,
+        10,
+        DefaultFolder(Environment.SpecialFolder.MyPictures, "Device Widget"),
+        DefaultFolder(Environment.SpecialFolder.MyVideos, "Device Widget"),
+        "Balanced",
+        true,
+        false,
+        DefaultFolder(Environment.SpecialFolder.MyPictures, "Device Widget Imports"),
+        true);
+
+    private static string DefaultFolder(Environment.SpecialFolder folder, string child)
+    {
+        var root = Environment.GetFolderPath(folder);
+        if (string.IsNullOrWhiteSpace(root))
+            root = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        return Path.Combine(root, child);
+    }
+}
+
+internal sealed class DesktopSettingsStore
+{
+    private readonly string _path;
+
+    public DesktopSettingsStore()
+    {
+        var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "AndroidWidget");
+        _path = Path.Combine(directory, "desktop-settings.json");
+        Current = Load(_path);
+    }
+
+    public DesktopSettings Current { get; private set; }
+    public event EventHandler? Changed;
+
+    public void Update(Func<DesktopSettings, DesktopSettings> update)
+    {
+        Current = update(Current);
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
+            File.WriteAllText(_path, JsonSerializer.Serialize(Current, new JsonSerializerOptions
+            {
+                WriteIndented = true
+            }));
+        }
+        catch
+        {
+            // Settings still apply for the current session if persistence is unavailable.
+        }
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
+    private static DesktopSettings Load(string path)
+    {
+        try
+        {
+            return File.Exists(path)
+                ? JsonSerializer.Deserialize<DesktopSettings>(File.ReadAllText(path)) ?? DesktopSettings.Default
+                : DesktopSettings.Default;
+        }
+        catch
+        {
+            return DesktopSettings.Default;
+        }
+    }
+}

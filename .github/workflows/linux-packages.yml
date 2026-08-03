@@ -31,10 +31,10 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Set up .NET 8
+      - name: Set up .NET 10
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: 10.0.x
 
       - name: Resolve version
         id: version
@@ -63,7 +63,7 @@ jobs:
           mkdir smoke
           tar -xzf "$archive" -C smoke
           set +e
-          timeout 10s xvfb-run -a smoke/DeviceWidget/DeviceWidget.Desktop
+          timeout 10s xvfb-run -a smoke/DeviceWidget/DeviceWidget
           status=$?
           set -e
           if [[ "$status" -ne 0 && "$status" -ne 124 ]]; then
