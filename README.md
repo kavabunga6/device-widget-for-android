@@ -144,7 +144,7 @@ $env:DEVICE_WIDGET_ANDROID_KEYSTORE = 'path-to-release.jks'
 $env:DEVICE_WIDGET_ANDROID_STORE_PASSWORD = '<from-local-secret-store>'
 $env:DEVICE_WIDGET_ANDROID_KEY_ALIAS = 'release-alias'
 $env:DEVICE_WIDGET_ANDROID_KEY_PASSWORD = '<from-local-secret-store>'
-./tools/build_release.ps1 -Version 0.1.3
+./tools/build_release.ps1 -Version 0.1.4
 ```
 
 Ключи и пароли не хранятся в репозитории. Статус подписи каждого пакета указан
