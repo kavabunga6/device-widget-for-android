@@ -3,7 +3,7 @@
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <Deterministic>true</Deterministic>
-    <Version>0.1.4</Version>
+    <Version>0.1.5</Version>
     <Authors>Device Widget contributors</Authors>
     <Company>Device Widget contributors</Company>
     <Product>Device Widget for Android</Product>
