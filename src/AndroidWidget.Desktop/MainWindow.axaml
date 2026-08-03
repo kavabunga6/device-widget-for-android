@@ -295,16 +295,13 @@
           <TextBlock x:Name="PanelStatusText" Text="Готово" FontSize="10"
                      Foreground="{DynamicResource Secondary}" TextTrimming="CharacterEllipsis" />
         </StackPanel>
-        <StackPanel x:Name="DrawerBubblePanel" Grid.RowSpan="3" ZIndex="30"
-                    Margin="4,48,4,38" Spacing="5" MaxHeight="190"
-                    HorizontalAlignment="Stretch" VerticalAlignment="Top" />
       </Grid>
     </Border>
   </Popup>
 
   <Popup x:Name="NotificationPopup" IsLightDismissEnabled="False" WindowManagerAddShadowHint="False">
-    <Border x:Name="NotificationBubbleHost" Width="280" Margin="6" Background="Transparent">
-      <StackPanel x:Name="ExternalBubblePanel" Spacing="5" MaxHeight="210" />
+    <Border x:Name="NotificationBubbleHost" Width="340" Margin="6" Background="Transparent">
+      <StackPanel x:Name="ExternalBubblePanel" Spacing="8" />
     </Border>
   </Popup>
   </Grid>

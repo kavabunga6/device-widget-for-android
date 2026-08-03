@@ -19,7 +19,7 @@ public sealed partial class MainWindow : Window
     private const double PhoneWindowWidth = 258;
     private const double PhoneWindowHeight = 392;
     private const double DrawerWidth = 326;
-    private const double NotificationWidth = 292;
+    private const double NotificationWidth = 352;
     private readonly DesktopRuntime _runtime;
     private readonly PortableAdbService _adb;
     private readonly DesktopSettingsStore _settings;
@@ -854,37 +854,34 @@ public sealed partial class MainWindow : Window
     {
         NotificationPopup.IsOpen = false;
         ExternalBubblePanel.Children.Clear();
-        DrawerBubblePanel.Children.Clear();
         if (_notificationBubbles.Count == 0)
             return;
 
-        var target = _drawerOpen ? DrawerBubblePanel : ExternalBubblePanel;
         foreach (var bubble in _notificationBubbles)
-            target.Children.Add(CreateBubble(bubble, _miniMode && !_drawerOpen));
+            ExternalBubblePanel.Children.Add(CreateBubble(bubble));
 
-        if (_drawerOpen)
-            return;
-
-        NotificationBubbleHost.Width = _miniMode ? 220 : 280;
-        NotificationPopup.Placement = ShouldOpenPopupOnLeft(NotificationWidth)
-            ? PlacementMode.LeftEdgeAlignedTop
-            : PlacementMode.RightEdgeAlignedTop;
+        var openOnLeft = _drawerOpen ? _drawerOnLeft : ShouldOpenPopupOnLeft(NotificationWidth);
+        NotificationPopup.Placement = openOnLeft
+            ? PlacementMode.LeftEdgeAlignedBottom
+            : PlacementMode.RightEdgeAlignedBottom;
         NotificationPopup.IsOpen = true;
     }
 
-    private static Border CreateBubble(NotificationBubble bubble, bool compact)
+    private static Border CreateBubble(NotificationBubble bubble)
     {
         var view = new Border
         {
-            Padding = compact ? new Thickness(6, 4) : new Thickness(10, 6),
-            CornerRadius = new CornerRadius(10, 10, 10, 3),
+            MinHeight = 46,
+            Padding = new Thickness(12, 9),
+            CornerRadius = new CornerRadius(12, 12, 12, 4),
             Background = new SolidColorBrush(Color.FromRgb(51, 45, 86)),
             Child = new TextBlock
             {
                 Text = bubble.Message,
-                FontSize = compact ? 8 : 9.5,
+                FontSize = 12.5,
+                FontWeight = FontWeight.Medium,
+                LineHeight = 17,
                 TextWrapping = TextWrapping.Wrap,
-                MaxHeight = compact ? 23 : 34,
                 Foreground = new SolidColorBrush(Color.FromRgb(232, 228, 255))
             }
         };
