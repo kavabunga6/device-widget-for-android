@@ -19,8 +19,7 @@
       <Setter Property="VerticalContentAlignment" Value="Center"/>
     </Style>
   </Window.Styles>
-  <Border CornerRadius="18" Background="{DynamicResource WindowSurface}" BorderBrush="{DynamicResource Border}" BorderThickness="1"
-          BoxShadow="0 12 32 0 #77000000">
+  <Border CornerRadius="18" Background="{DynamicResource WindowSurface}" BorderBrush="{DynamicResource Border}" BorderThickness="1">
     <Grid RowDefinitions="43,*,60">
       <Grid Margin="14,0,10,0" ColumnDefinitions="Auto,*,Auto" PointerPressed="TitleBar_PointerPressed">
         <Border Width="22" Height="28" CornerRadius="7" BorderBrush="#8A73FF" BorderThickness="1.4"

@@ -7,7 +7,7 @@
     <Style Selector="Border.card"><Setter Property="Padding" Value="16"/><Setter Property="CornerRadius" Value="14"/><Setter Property="Background" Value="{DynamicResource Surface}"/><Setter Property="BorderBrush" Value="{DynamicResource Border}"/><Setter Property="BorderThickness" Value="1"/></Style>
     <Style Selector="Button.action"><Setter Property="Height" Value="36"/><Setter Property="CornerRadius" Value="10"/><Setter Property="Background" Value="{DynamicResource MutedSurface}"/><Setter Property="BorderBrush" Value="{DynamicResource Border}"/><Setter Property="Foreground" Value="{DynamicResource Primary}"/><Setter Property="Padding" Value="14,0"/><Setter Property="HorizontalContentAlignment" Value="Center"/><Setter Property="VerticalContentAlignment" Value="Center"/></Style>
   </Window.Styles>
-  <Border CornerRadius="18" Background="{DynamicResource WindowSurface}" BorderBrush="{DynamicResource Border}" BorderThickness="1" BoxShadow="0 12 32 0 #77000000">
+  <Border CornerRadius="18" Background="{DynamicResource WindowSurface}" BorderBrush="{DynamicResource Border}" BorderThickness="1">
     <Grid RowDefinitions="44,*">
       <Grid Margin="14,0,10,0" ColumnDefinitions="Auto,*,Auto" PointerPressed="TitleBar_PointerPressed">
         <Border Width="22" Height="28" CornerRadius="7" BorderBrush="#8A73FF" BorderThickness="1.4" VerticalAlignment="Center"><TextBlock Text="▯" Foreground="#8A73FF" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
