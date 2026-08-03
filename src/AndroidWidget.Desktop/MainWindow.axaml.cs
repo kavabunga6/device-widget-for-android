@@ -634,7 +634,8 @@ public sealed partial class MainWindow : Window
     {
         _recordingUiActive = active;
         RecordButtonText.Text = active ? "Остановить" : "Запись";
-        RecordIconText.Text = active ? "■" : "●";
+        RecordStartIcon.IsVisible = !active;
+        RecordStopIcon.IsVisible = active;
         RecordIconBorder.Background = new SolidColorBrush(active
             ? Color.FromRgb(221, 75, 67)
             : Color.FromRgb(195, 71, 85));
