@@ -47,8 +47,7 @@
     <Border x:Name="PhoneShell" Width="242" Height="376" VerticalAlignment="Top" CornerRadius="38" Margin="4"
             Background="{DynamicResource Shell}" BorderBrush="{DynamicResource Border}" BorderThickness="1.2"
             DragDrop.AllowDrop="True" DragDrop.DragOver="PhoneShell_DragOver" DragDrop.Drop="PhoneShell_Drop"
-            PointerPressed="PhoneShell_PointerPressed"
-            BoxShadow="0 8 20 0 #66000000">
+            PointerPressed="PhoneShell_PointerPressed">
       <Grid Margin="9">
         <Border CornerRadius="30" Background="{DynamicResource Screen}"
                 BorderBrush="#343945" BorderThickness="1">
