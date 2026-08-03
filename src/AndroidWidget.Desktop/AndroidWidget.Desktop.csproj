@@ -16,6 +16,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\AndroidWidget.Core\AndroidWidget.Core.csproj" />
     <ProjectReference Include="..\AndroidWidget.CompanionHost\AndroidWidget.CompanionHost.csproj" />
     <ProjectReference Include="..\AndroidWidget.Protocol\AndroidWidget.Protocol.csproj" />

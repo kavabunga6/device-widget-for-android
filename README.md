@@ -58,7 +58,7 @@ Companion не устанавливается автоматически. Уст
 | Платформа | Архитектуры | Интерфейс | ADB и scrcpy |
 |---|---|---|---|
 | Windows 10/11 | x64, ARM64 | WPF-виджет | входят в release-пакет |
-| macOS 10.15+ | Intel, Apple Silicon | Avalonia desktop host | используются из `PATH` |
+| macOS 14+ | Intel, Apple Silicon | Avalonia desktop host | используются из `PATH` |
 | Linux | x64, ARM64 | Avalonia desktop host | используются из `PATH` |
 | Android 8.0+ | companion APK | сопряжение и статус соединения | не требуются |
 
@@ -136,16 +136,33 @@ dotnet run --project AndroidWidget.csproj -c Release -- --verify-companion-bundl
 dotnet run --project AndroidWidget.csproj -c Release -- --verify-wireless-qr
 ```
 
-Полная сборка создаёт Windows x64/ARM64, macOS x64/ARM64, Linux x64/ARM64,
-подписанный companion APK, контрольные суммы и архивы corresponding source:
+Windows-этап создаёт Windows x64/ARM64, подписанный companion APK, контрольные
+суммы и архивы corresponding source:
 
 ```powershell
 $env:DEVICE_WIDGET_ANDROID_KEYSTORE = 'path-to-release.jks'
 $env:DEVICE_WIDGET_ANDROID_STORE_PASSWORD = '<from-local-secret-store>'
 $env:DEVICE_WIDGET_ANDROID_KEY_ALIAS = 'release-alias'
 $env:DEVICE_WIDGET_ANDROID_KEY_PASSWORD = '<from-local-secret-store>'
-./tools/build_release.ps1 -Version 0.1.5
+./tools/build_release.ps1 -Version 0.1.6
 ```
+
+macOS-пакеты собираются только нативно на macOS, чтобы сохранить исполняемые права,
+создать `.icns`, проверить `Info.plist` и выполнить ad-hoc signing:
+
+```bash
+./tools/build_macos_bundle.sh 0.1.6 osx-arm64 artifacts/packages
+./tools/build_macos_bundle.sh 0.1.6 osx-x64 artifacts/packages
+```
+
+Linux-пакеты также собираются нативно, чтобы сохранить исполняемые права:
+
+```bash
+./tools/build_linux_package.sh 0.1.6 linux-x64 artifacts/packages
+./tools/build_linux_package.sh 0.1.6 linux-arm64 artifacts/packages
+```
+
+Те же процессы автоматизированы workflows **macOS Packages** и **Linux Packages**.
 
 Ключи и пароли не хранятся в репозитории. Статус подписи каждого пакета указан
 в release notes.
@@ -180,6 +197,8 @@ companion-android/                     optional Android companion
 licenses/                              shipped license texts and notices
 third_party/sources/                   corresponding-source manifest
 tools/build_release.ps1               reproducible release packaging
+tools/build_macos_bundle.sh           native macOS bundle, icon, signing and verification
+tools/build_linux_package.sh          native Linux packaging and executable-mode verification
 tools/DocsCapture/                     reproducible documentation screenshots
 ```
 

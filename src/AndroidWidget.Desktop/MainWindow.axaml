@@ -1,7 +1,8 @@
 <Window x:Class="AndroidWidget.Desktop.MainWindow"
         xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Device Widget for Android" Width="720" Height="610" MinWidth="620" MinHeight="520"
+        Title="Device Widget for Android" Icon="/Assets/AppIcon.png"
+        Width="720" Height="610" MinWidth="620" MinHeight="520"
         Background="#202124" WindowStartupLocation="CenterScreen">
   <Window.Resources>
     <SolidColorBrush x:Key="Surface" Color="#2B2D31" />

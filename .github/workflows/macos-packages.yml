@@ -1,0 +1,82 @@
+name: macOS Packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Semantic version without the v prefix
+        required: true
+        default: 0.1.6
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: ${{ matrix.rid }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: osx-arm64
+            runner: macos-15
+          - rid: osx-x64
+            runner: macos-15-intel
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="${{ inputs.version }}"
+          fi
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Build, sign, and verify app bundle
+        shell: bash
+        run: |
+          chmod +x tools/build_macos_bundle.sh
+          tools/build_macos_bundle.sh \
+            "${{ steps.version.outputs.value }}" \
+            "${{ matrix.rid }}" \
+            artifacts/packages
+
+      - name: Smoke-launch through Launch Services
+        shell: bash
+        run: |
+          archive="artifacts/packages/DeviceWidget-for-Android-${{ steps.version.outputs.value }}-${{ matrix.rid }}.tar.gz"
+          mkdir smoke
+          tar -xzf "$archive" -C smoke
+          app="$PWD/smoke/Device Widget.app"
+          open "$app"
+          for attempt in {1..20}; do
+            if pgrep -f "$app/Contents/MacOS/DeviceWidget" >/dev/null; then
+              pkill -f "$app/Contents/MacOS/DeviceWidget" || true
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Device Widget did not remain running after Launch Services opened it." >&2
+          exit 1
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: DeviceWidget-${{ steps.version.outputs.value }}-${{ matrix.rid }}
+          path: artifacts/packages/*.tar.gz
+          if-no-files-found: error

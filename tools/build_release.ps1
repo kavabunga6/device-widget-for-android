@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = "0.1.5",
+    [string]$Version = "0.1.6",
     [switch]$AllowUnsignedAndroid
 )
 
@@ -49,14 +49,27 @@ if (-not $hasAndroidSigning -and -not $AllowUnsignedAndroid) {
 }
 
 New-Item -ItemType Directory -Path $packageRoot -Force | Out-Null
-
-Push-Location (Join-Path $repoRoot "companion-android")
+$androidUserHome = Join-Path $repoRoot ".tools\android-home"
+New-Item -ItemType Directory -Path $androidUserHome -Force | Out-Null
+$previousAndroidUserHome = [Environment]::GetEnvironmentVariable("ANDROID_USER_HOME", "Process")
+$previousAndroidSdkHome = [Environment]::GetEnvironmentVariable("ANDROID_SDK_HOME", "Process")
 try {
-    & .\gradlew.bat clean lint test assembleRelease
-    if ($LASTEXITCODE -ne 0) { throw "Android build failed." }
+    $env:ANDROID_USER_HOME = $androidUserHome
+    Remove-Item Env:ANDROID_SDK_HOME -ErrorAction SilentlyContinue
+    Push-Location (Join-Path $repoRoot "companion-android")
+    try {
+        & .\gradlew.bat --no-daemon --console=plain "-Pkotlin.compiler.execution.strategy=in-process" clean lint test assembleRelease
+        if ($LASTEXITCODE -ne 0) { throw "Android build failed." }
+    }
+    finally {
+        Pop-Location
+    }
 }
 finally {
-    Pop-Location
+    if ($null -eq $previousAndroidUserHome) { Remove-Item Env:ANDROID_USER_HOME -ErrorAction SilentlyContinue }
+    else { $env:ANDROID_USER_HOME = $previousAndroidUserHome }
+    if ($null -eq $previousAndroidSdkHome) { Remove-Item Env:ANDROID_SDK_HOME -ErrorAction SilentlyContinue }
+    else { $env:ANDROID_SDK_HOME = $previousAndroidSdkHome }
 }
 
 $apkCandidates = @(
@@ -71,12 +84,8 @@ if (-not $hasAndroidSigning -and $apk -notmatch "unsigned") {
 Copy-Item -LiteralPath $apk -Destination (Join-Path $packageRoot "DeviceWidget-Companion-$Version.apk")
 
 $desktopTargets = @(
-    @{ Rid = "win-x64"; Project = "AndroidWidget.csproj"; Kind = "windows" },
-    @{ Rid = "win-arm64"; Project = "AndroidWidget.csproj"; Kind = "windows" },
-    @{ Rid = "osx-x64"; Project = "src\AndroidWidget.Desktop\AndroidWidget.Desktop.csproj"; Kind = "macos" },
-    @{ Rid = "osx-arm64"; Project = "src\AndroidWidget.Desktop\AndroidWidget.Desktop.csproj"; Kind = "macos" },
-    @{ Rid = "linux-x64"; Project = "src\AndroidWidget.Desktop\AndroidWidget.Desktop.csproj"; Kind = "linux" },
-    @{ Rid = "linux-arm64"; Project = "src\AndroidWidget.Desktop\AndroidWidget.Desktop.csproj"; Kind = "linux" }
+    @{ Rid = "win-x64"; Project = "AndroidWidget.csproj" },
+    @{ Rid = "win-arm64"; Project = "AndroidWidget.csproj" }
 )
 
 foreach ($target in $desktopTargets) {
@@ -86,48 +95,8 @@ foreach ($target in $desktopTargets) {
         -p:EnableCompressionInSingleFile=true -p:Version=$Version -o $publish
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed for $($target.Rid)." }
 
-    if ($target.Kind -eq "windows") {
-        $archive = Join-Path $packageRoot "DeviceWidget-for-Android-$Version-$($target.Rid).zip"
-        Compress-Archive -Path (Join-Path $publish "*") -DestinationPath $archive -CompressionLevel Optimal
-        continue
-    }
-
-    if ($target.Kind -eq "macos") {
-        $stage = Join-Path $artifactRoot "stage\$($target.Rid)\Device Widget.app"
-        $macos = Join-Path $stage "Contents\MacOS"
-        $resources = Join-Path $stage "Contents\Resources"
-        New-Item -ItemType Directory -Path $macos,$resources -Force | Out-Null
-        Copy-Item -LiteralPath (Join-Path $publish "DeviceWidget.Desktop") -Destination (Join-Path $macos "DeviceWidget")
-        Copy-Item -LiteralPath (Join-Path $publish "LICENSE") -Destination $resources
-        Copy-Item -LiteralPath (Join-Path $publish "THIRD_PARTY_NOTICES.md") -Destination $resources
-        Copy-Item -LiteralPath (Join-Path $publish "SOURCE_OFFER.md") -Destination $resources
-        Copy-Item -LiteralPath (Join-Path $publish "licenses") -Destination $resources -Recurse
-        $plist = @"
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict>
-<key>CFBundleExecutable</key><string>DeviceWidget</string>
-<key>CFBundleIdentifier</key><string>dev.devicewidget.desktop</string>
-<key>CFBundleName</key><string>Device Widget</string>
-<key>CFBundleDisplayName</key><string>Device Widget for Android</string>
-<key>CFBundleShortVersionString</key><string>$Version</string>
-<key>CFBundleVersion</key><string>$Version</string>
-<key>LSMinimumSystemVersion</key><string>10.15</string>
-</dict></plist>
-"@
-        [System.IO.File]::WriteAllText((Join-Path $stage "Contents\Info.plist"), $plist, [System.Text.UTF8Encoding]::new($false))
-        $archive = Join-Path $packageRoot "DeviceWidget-for-Android-$Version-$($target.Rid).tar.gz"
-        & tar -czf $archive -C (Split-Path -Parent $stage) (Split-Path -Leaf $stage)
-        if ($LASTEXITCODE -ne 0) { throw "tar failed for $($target.Rid)." }
-        continue
-    }
-
-    $linuxStage = Join-Path $artifactRoot "stage\$($target.Rid)\DeviceWidget"
-    New-Item -ItemType Directory -Path $linuxStage -Force | Out-Null
-    Copy-Item -Path (Join-Path $publish "*") -Destination $linuxStage -Recurse
-    $archive = Join-Path $packageRoot "DeviceWidget-for-Android-$Version-$($target.Rid).tar.gz"
-    & tar -czf $archive -C (Split-Path -Parent $linuxStage) (Split-Path -Leaf $linuxStage)
-    if ($LASTEXITCODE -ne 0) { throw "tar failed for $($target.Rid)." }
+    $archive = Join-Path $packageRoot "DeviceWidget-for-Android-$Version-$($target.Rid).zip"
+    Compress-Archive -Path (Join-Path $publish "*") -DestinationPath $archive -CompressionLevel Optimal
 }
 
 foreach ($entry in $sourceHashes.GetEnumerator()) {
@@ -144,3 +113,4 @@ $sumLines = Get-ChildItem -LiteralPath $packageRoot -File |
 [System.IO.File]::WriteAllLines((Join-Path $packageRoot "SHA256SUMS.txt"), $sumLines, [System.Text.UTF8Encoding]::new($false))
 
 Write-Host "Release packages: $packageRoot"
+Write-Host "Linux and macOS packages must be produced natively with the platform build scripts or GitHub Actions workflows."

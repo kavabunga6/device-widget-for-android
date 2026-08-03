@@ -1,0 +1,79 @@
+name: Linux Packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Semantic version without the v prefix
+        required: true
+        default: 0.1.6
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: ${{ matrix.rid }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: linux-x64
+            runner: ubuntu-24.04
+          - rid: linux-arm64
+            runner: ubuntu-24.04-arm
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="${{ inputs.version }}"
+          fi
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Build and verify package
+        shell: bash
+        run: |
+          chmod +x tools/build_linux_package.sh
+          tools/build_linux_package.sh \
+            "${{ steps.version.outputs.value }}" \
+            "${{ matrix.rid }}" \
+            artifacts/packages
+
+      - name: Smoke-launch desktop host
+        shell: bash
+        run: |
+          archive="artifacts/packages/DeviceWidget-for-Android-${{ steps.version.outputs.value }}-${{ matrix.rid }}.tar.gz"
+          mkdir smoke
+          tar -xzf "$archive" -C smoke
+          set +e
+          timeout 10s xvfb-run -a smoke/DeviceWidget/DeviceWidget.Desktop
+          status=$?
+          set -e
+          if [[ "$status" -ne 0 && "$status" -ne 124 ]]; then
+            echo "Device Widget failed to launch (exit $status)." >&2
+            exit "$status"
+          fi
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: DeviceWidget-${{ steps.version.outputs.value }}-${{ matrix.rid }}
+          path: artifacts/packages/*.tar.gz
+          if-no-files-found: error

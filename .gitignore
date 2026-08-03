@@ -21,6 +21,8 @@ widget.log
 # Locally extracted tools and packages
 tools/*
 !tools/build_release.ps1
+!tools/build_macos_bundle.sh
+!tools/build_linux_package.sh
 !tools/CompanionHostSmoke/
 !tools/CompanionHostSmoke/**
 tools/CompanionHostSmoke/bin/
