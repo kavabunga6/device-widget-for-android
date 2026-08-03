@@ -33,6 +33,10 @@ tools/TransferQueueSmoke/obj/
 !tools/DocsCapture/**
 tools/DocsCapture/bin/
 tools/DocsCapture/obj/
+!tools/CompanionBundleSmoke/
+!tools/CompanionBundleSmoke/**
+tools/CompanionBundleSmoke/bin/
+tools/CompanionBundleSmoke/obj/
 .tools/
 publish/
 *.nupkg

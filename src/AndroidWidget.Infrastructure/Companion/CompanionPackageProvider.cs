@@ -5,6 +5,10 @@ namespace AndroidWidget.Infrastructure.Companion;
 internal sealed class CompanionPackageProvider
 {
     private const string ResourceName = "AndroidWidget.Infrastructure.Bundled.DeviceWidget-Companion.apk";
+    private const string VersionResourceName =
+        "AndroidWidget.Infrastructure.Bundled.companion-version.properties";
+
+    public int VersionCode => ReadVersionCode();
 
     public bool IsAvailable => typeof(CompanionPackageProvider).Assembly.GetManifestResourceInfo(ResourceName) is not null;
 
@@ -24,7 +28,8 @@ internal sealed class CompanionPackageProvider
             details = "Companion APK resource is not a valid ZIP/APK payload.";
             return false;
         }
-        details = $"{bytes.Length} bytes, SHA-256 {Convert.ToHexString(SHA256.HashData(bytes))}";
+        details = $"versionCode {VersionCode}, {bytes.Length} bytes, " +
+                  $"SHA-256 {Convert.ToHexString(SHA256.HashData(bytes))}";
         return true;
     }
 
@@ -48,5 +53,22 @@ internal sealed class CompanionPackageProvider
         File.WriteAllBytes(temporary, bytes);
         File.Move(temporary, target, overwrite: true);
         return target;
+    }
+
+    private static int ReadVersionCode()
+    {
+        using var resource = typeof(CompanionPackageProvider).Assembly
+            .GetManifestResourceStream(VersionResourceName)
+            ?? throw new InvalidOperationException("Метаданные версии companion отсутствуют в desktop-сборке.");
+        using var reader = new StreamReader(resource);
+        while (reader.ReadLine() is { } line)
+        {
+            if (!line.StartsWith("VERSION_CODE=", StringComparison.Ordinal))
+                continue;
+            if (int.TryParse(line["VERSION_CODE=".Length..], out var versionCode) && versionCode > 0)
+                return versionCode;
+            break;
+        }
+        throw new InvalidOperationException("Некорректный VERSION_CODE companion.");
     }
 }

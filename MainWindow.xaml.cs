@@ -122,7 +122,7 @@ public partial class MainWindow : Window
             _companionCoordinator.RetainAdbRoutes(discovered.Select(device => device.Serial));
             foreach (var installedDevice in discovered.Where(device =>
                          device.State == DeviceConnectionState.Online &&
-                         device.CompanionState == CompanionInstallationState.Installed))
+                         device.CompanionState.IsInstalled()))
                 await _companionCoordinator.EnsureAdbRouteAsync(installedDevice.Serial, _lifetime.Token);
             var devices = discovered.Select(device =>
             {
@@ -549,7 +549,8 @@ public partial class MainWindow : Window
         var device = RequireOnlineDevice();
         if (device is null)
             return;
-        if (device.CompanionState == CompanionInstallationState.Installed)
+        var updateAvailable = device.CompanionState == CompanionInstallationState.UpdateAvailable;
+        if (device.CompanionState.IsInstalled() && !updateAvailable)
         {
             if (device.IsCompanionConnected)
             {
@@ -568,25 +569,56 @@ public partial class MainWindow : Window
             return;
         }
 
-        var consent = MessageBox.Show(this,
-            $"Установить Device Widget Companion на «{device.DisplayName}»?\n\n" +
-            "Установка начнётся только после вашего подтверждения. Доступ к уведомлениям приложение " +
-            "попросит отдельно на телефоне — автоматически он не выдаётся.",
-            "Установка компаньона", MessageBoxButton.YesNo, MessageBoxImage.Question,
+        var consent = MessageBox.Show(this, updateAvailable
+                ? $"Обновить Device Widget Companion на «{device.DisplayName}»?\n\n" +
+                  "Новая версия заменит установленную, сохранив сопряжение и выданные разрешения. " +
+                  "Android может попросить подтвердить обновление на телефоне."
+                : $"Установить Device Widget Companion на «{device.DisplayName}»?\n\n" +
+                  "Установка начнётся только после вашего подтверждения. Доступ к уведомлениям приложение " +
+                  "попросит отдельно на телефоне — автоматически он не выдаётся.",
+            updateAvailable ? "Обновление компаньона" : "Установка компаньона",
+            MessageBoxButton.YesNo, MessageBoxImage.Question,
             MessageBoxResult.No);
         if (consent != MessageBoxResult.Yes)
         {
-            SetOperationStatus("Установка компаньона отменена");
+            SetOperationStatus(updateAvailable
+                ? "Обновление компаньона отменено"
+                : "Установка компаньона отменена");
             return;
         }
 
         await RunOperationAsync(async token =>
         {
-            SetOperationStatus("Устанавливаю Device Widget Companion…");
+            SetOperationStatus(updateAvailable
+                ? "Обновляю Device Widget Companion…"
+                : "Устанавливаю Device Widget Companion…");
             var result = await _companion.InstallAsync(device.Serial, token);
+            if (result.FailureKind == CompanionInstallFailureKind.SignatureMismatch)
+            {
+                var reinstallConsent = MessageBox.Show(this,
+                    "Android отклонил обновление: старая тестовая версия подписана другим ключом.\n\n" +
+                    "Переустановить companion? Его локальное сопряжение и доступ к уведомлениям будут сброшены, " +
+                    "после установки их потребуется включить снова.",
+                    "Требуется переустановка companion", MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning, MessageBoxResult.No);
+                if (reinstallConsent != MessageBoxResult.Yes)
+                {
+                    SetOperationStatus("Обновление отменено: подписи APK различаются", true);
+                    return;
+                }
+                SetOperationStatus("Переустанавливаю companion с новым ключом подписи…");
+                var reinstall = await _companion.ReinstallAsync(device.Serial, token);
+                if (!reinstall.IsSuccess)
+                    throw new InvalidOperationException(reinstall.BestMessage);
+                SetOperationStatus("Компаньон переустановлен · выполните сопряжение и разрешите уведомления заново");
+                await RefreshDevicesAsync(force: true);
+                return;
+            }
             if (!result.IsSuccess)
                 throw new InvalidOperationException(result.BestMessage);
-            SetOperationStatus("Компаньон установлен и открыт на телефоне · нажмите «Сопрячь»");
+            SetOperationStatus(updateAvailable
+                ? "Компаньон обновлён и открыт на телефоне"
+                : "Компаньон установлен и открыт на телефоне · нажмите «Сопрячь»");
             await RefreshDevicesAsync(force: true);
         });
     }
@@ -721,21 +753,28 @@ public partial class MainWindow : Window
 
     private void UpdateCompanionUi(AndroidDevice? device)
     {
-        var installed = device?.CompanionState == CompanionInstallationState.Installed;
+        var installed = device?.CompanionState.IsInstalled() == true;
+        var updateAvailable = device?.CompanionState == CompanionInstallationState.UpdateAvailable;
         var connected = device?.IsCompanionConnected == true;
         var notificationAccess = device?.CompanionNotificationAccess == true;
         var online = device?.State == DeviceConnectionState.Online;
-        CompanionButtonText.Text = !installed ? "Компаньон" : connected ? "Открыть" : "Сопрячь";
+        CompanionButtonText.Text = updateAvailable
+            ? "Обновить"
+            : !installed ? "Компаньон" : connected ? "Открыть" : "Сопрячь";
         CompanionButton.IsEnabled = online && !_operationInProgress &&
                                     (installed || _companion.IsInstallerAvailable);
-        CompanionButton.ToolTip = installed
+        CompanionButton.ToolTip = updateAvailable
+            ? "Установить новую версию companion после подтверждения"
+            : installed
             ? connected
                 ? "Открыть Device Widget Companion и настройки доступа"
                 : "Создать код и ссылку сопряжения"
             : _companion.IsInstallerAvailable
                 ? "Установить компаньон только после подтверждения"
                 : "APK компаньона не входит в эту сборку";
-        CompanionStatusText.Text = connected && notificationAccess
+        CompanionStatusText.Text = updateAvailable
+            ? "Доступно обновление компаньона · нажмите «Обновить»"
+            : connected && notificationAccess
             ? "Компаньон сопряжён · уведомления включены"
             : connected
                 ? "Компаньон сопряжён · разрешите доступ к уведомлениям на телефоне"

@@ -210,12 +210,15 @@ public partial class DeviceMiniWindow : Window
         ShellMenuItem.IsEnabled = enabled;
         ClipboardMenuItem.IsEnabled = enabled;
         PowerMenuItem.IsEnabled = enabled;
-        var installed = _device.CompanionState == CompanionInstallationState.Installed;
-        CompanionMenuItem.Header = !installed ? "Компаньон" : _device.IsCompanionConnected
+        var installed = _device.CompanionState.IsInstalled();
+        var updateAvailable = _device.CompanionState == CompanionInstallationState.UpdateAvailable;
+        CompanionMenuItem.Header = updateAvailable ? "Обновить компаньон" : !installed ? "Компаньон" : _device.IsCompanionConnected
             ? "Открыть"
             : "Сопрячь";
         CompanionMenuItem.IsEnabled = enabled && (installed || _companion.IsInstallerAvailable);
-        CompanionMenuItem.ToolTip = installed
+        CompanionMenuItem.ToolTip = updateAvailable
+            ? "Установить новую версию companion после подтверждения"
+            : installed
             ? _device.IsCompanionConnected
                 ? "Открыть Device Widget Companion"
                 : "Создать код и ссылку сопряжения"
@@ -430,7 +433,8 @@ public partial class DeviceMiniWindow : Window
 
     private async void CompanionMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        if (_device.CompanionState == CompanionInstallationState.Installed)
+        var updateAvailable = _device.CompanionState == CompanionInstallationState.UpdateAvailable;
+        if (_device.CompanionState.IsInstalled() && !updateAvailable)
         {
             if (_device.IsCompanionConnected)
             {
@@ -442,26 +446,48 @@ public partial class DeviceMiniWindow : Window
             await ShowPairingAsync();
             return;
         }
-        var consent = MessageBox.Show(this,
-            $"Установить Device Widget Companion на «{_device.DisplayName}»?\n\n" +
-            "Без вашего подтверждения установка не выполняется. Доступ к уведомлениям выдаётся " +
-            "отдельно в настройках телефона.",
-            "Установка компаньона", MessageBoxButton.YesNo, MessageBoxImage.Question,
+        var consent = MessageBox.Show(this, updateAvailable
+                ? $"Обновить Device Widget Companion на «{_device.DisplayName}»?\n\n" +
+                  "Новая версия заменит установленную, сохранив сопряжение и разрешения. " +
+                  "Android может попросить подтвердить обновление на телефоне."
+                : $"Установить Device Widget Companion на «{_device.DisplayName}»?\n\n" +
+                  "Без вашего подтверждения установка не выполняется. Доступ к уведомлениям выдаётся " +
+                  "отдельно в настройках телефона.",
+            updateAvailable ? "Обновление компаньона" : "Установка компаньона",
+            MessageBoxButton.YesNo, MessageBoxImage.Question,
             MessageBoxResult.No);
         if (consent != MessageBoxResult.Yes)
         {
-            SetActionStatus("Установка отменена");
+            SetActionStatus(updateAvailable ? "Обновление отменено" : "Установка отменена");
             return;
         }
 
         await RunMenuActionAsync(async () =>
         {
             var result = await _companion.InstallAsync(_device.Serial);
+            if (result.FailureKind == CompanionInstallFailureKind.SignatureMismatch)
+            {
+                var reinstallConsent = MessageBox.Show(this,
+                    "Android отклонил обновление: старая тестовая версия подписана другим ключом.\n\n" +
+                    "Переустановить companion? Сопряжение и доступ к уведомлениям будут сброшены и потребуют " +
+                    "повторного подтверждения.",
+                    "Требуется переустановка companion", MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning, MessageBoxResult.No);
+                if (reinstallConsent != MessageBoxResult.Yes)
+                    throw new InvalidOperationException("Обновление отменено: подписи APK различаются");
+                var reinstall = await _companion.ReinstallAsync(_device.Serial);
+                if (!reinstall.IsSuccess)
+                    throw new InvalidOperationException(reinstall.BestMessage);
+                _device = _device with { CompanionState = CompanionInstallationState.Installed };
+                return;
+            }
             if (!result.IsSuccess)
                 throw new InvalidOperationException(result.BestMessage);
             _device = _device with { CompanionState = CompanionInstallationState.Installed };
-        }, "Устанавливаю компаньон…",
-            "Компаньон установлен и открыт · теперь нажмите «Сопрячь»");
+        }, updateAvailable ? "Обновляю компаньон…" : "Устанавливаю компаньон…",
+            updateAvailable
+                ? "Компаньон готов · проверьте сопряжение и доступ к уведомлениям"
+                : "Компаньон установлен и открыт · теперь нажмите «Сопрячь»");
     }
 
     private async Task ShowPairingAsync()

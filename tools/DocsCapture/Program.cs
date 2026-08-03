@@ -298,8 +298,11 @@ internal static class Program
         public Task<CompanionInstallationState> GetInstallationStateAsync(string serial,
             CancellationToken cancellationToken = default) =>
             Task.FromResult(CompanionInstallationState.Installed);
-        public Task<OperationResult> InstallAsync(string serial, CancellationToken cancellationToken = default) =>
-            Task.FromResult(OperationResult.Success());
+        public Task<CompanionInstallResult> InstallAsync(string serial,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(CompanionInstallResult.From(OperationResult.Success()));
+        public Task<OperationResult> ReinstallAsync(string serial,
+            CancellationToken cancellationToken = default) => Task.FromResult(OperationResult.Success());
         public Task<OperationResult> LaunchAsync(string serial, CancellationToken cancellationToken = default) =>
             Task.FromResult(OperationResult.Success());
         public Task<OperationResult> PreparePortReverseAsync(string serial, int port,

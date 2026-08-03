@@ -18,7 +18,14 @@ public sealed class DiagnosticsVerifier : IDiagnosticsVerifier
         return path is not null;
     }
 
-    public bool VerifyCompanionBundle(out string details) => new CompanionPackageProvider().Verify(out details);
+    public bool VerifyCompanionBundle(out string details)
+    {
+        var bundleValid = new CompanionPackageProvider().Verify(out details);
+        var versionDetectionValid = CompanionService.VerifyVersionDetection();
+        if (!versionDetectionValid)
+            details += "; companion update detection failed";
+        return bundleValid && versionDetectionValid;
+    }
 
     public bool VerifySmsParser() => SmsNotificationReader.VerifyParser();
 

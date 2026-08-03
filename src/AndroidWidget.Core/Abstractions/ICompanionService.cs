@@ -10,7 +10,9 @@ public interface ICompanionService
     Task<CompanionInstallationState> GetInstallationStateAsync(string serial,
         CancellationToken cancellationToken = default);
 
-    Task<OperationResult> InstallAsync(string serial, CancellationToken cancellationToken = default);
+    Task<CompanionInstallResult> InstallAsync(string serial, CancellationToken cancellationToken = default);
+
+    Task<OperationResult> ReinstallAsync(string serial, CancellationToken cancellationToken = default);
 
     Task<OperationResult> LaunchAsync(string serial, CancellationToken cancellationToken = default);
 

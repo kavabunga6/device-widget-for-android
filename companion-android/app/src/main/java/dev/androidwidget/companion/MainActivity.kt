@@ -13,6 +13,7 @@ import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.view.WindowInsets
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
@@ -38,7 +39,9 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         store = SecurePairingStore(this)
-        setContentView(createContent())
+        val content = createContent()
+        setContentView(content)
+        configureSafeAreas(content)
         handlePairingIntent(intent)
         requestNotificationPermission()
         if (store.loadAuthenticated() != null) {
@@ -104,10 +107,7 @@ class MainActivity : Activity() {
         }
         content.addView(pairingInput.withTopMargin(12))
 
-        content.addView(Button(this).apply {
-            text = "Подключить"
-            setOnClickListener { connect() }
-        }.withTopMargin(12))
+        content.addView(button("Подключить") { connect() }.withTopMargin(12))
 
         statusText = text("Ожидаю ссылку сопряжения", 13f, Color.rgb(139, 124, 255))
         content.addView(statusText.withTopMargin(12))
@@ -115,16 +115,12 @@ class MainActivity : Activity() {
         content.addView(text("Уведомления", 18f, Color.WHITE, true).withTopMargin(30))
         notificationAccessText = text("Проверяю доступ…", 13f, Color.rgb(197, 199, 206))
         content.addView(notificationAccessText.withTopMargin(7))
-        content.addView(Button(this).apply {
-            text = "Открыть доступ к уведомлениям"
-            setOnClickListener {
+        content.addView(button("Открыть доступ к уведомлениям") {
                 runCatching { startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
-            }
         }.withTopMargin(10))
 
-        content.addView(Button(this).apply {
-            text = "Лицензии и сторонние компоненты"
-            setOnClickListener { showOpenSourceLicenses() }
+        content.addView(button("Лицензии и сторонние компоненты") {
+            showOpenSourceLicenses()
         }.withTopMargin(10))
 
         content.addView(text(
@@ -132,10 +128,41 @@ class MainActivity : Activity() {
             12f,
             Color.rgb(150, 154, 164),
         ).withTopMargin(28))
+        content.addView(text(
+            "Версия ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+            11f,
+            Color.rgb(120, 124, 134),
+        ).withTopMargin(18))
 
         return ScrollView(this).apply {
+            isFillViewport = true
+            setBackgroundColor(Color.rgb(32, 33, 36))
             addView(content, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun configureSafeAreas(root: ScrollView) {
+        if (Build.VERSION.SDK_INT < 30) {
+            root.fitsSystemWindows = true
+            return
+        }
+        window.setDecorFitsSystemWindows(false)
+        root.setOnApplyWindowInsetsListener { view, insets ->
+            val safe = insets.getInsets(
+                WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout(),
+            )
+            val gestures = insets.getInsets(WindowInsets.Type.systemGestures())
+            val keyboard = insets.getInsets(WindowInsets.Type.ime())
+            view.setPadding(
+                maxOf(safe.left, gestures.left),
+                safe.top,
+                maxOf(safe.right, gestures.right),
+                maxOf(safe.bottom, keyboard.bottom),
+            )
+            insets
+        }
+        root.requestApplyInsets()
     }
 
     private fun connect() {
@@ -190,6 +217,14 @@ class MainActivity : Activity() {
         textSize = size
         setTextColor(color)
         if (bold) setTypeface(typeface, android.graphics.Typeface.BOLD)
+    }
+
+    private fun button(label: String, action: () -> Unit) = Button(this).apply {
+        text = label
+        isAllCaps = false
+        minHeight = dp(48)
+        setPadding(dp(14), dp(10), dp(14), dp(10))
+        setOnClickListener { action() }
     }
 
     private fun <T : android.view.View> T.withTopMargin(value: Int): T = apply {

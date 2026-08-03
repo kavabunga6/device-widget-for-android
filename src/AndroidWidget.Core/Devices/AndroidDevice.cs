@@ -23,6 +23,6 @@ public sealed record AndroidDevice(
 {
     public string ConnectionLabel => IsWireless ? "Wi-Fi ADB" : "USB / ADB";
     public bool CompanionFeaturesAvailable =>
-        State == DeviceConnectionState.Online && CompanionState == CompanionInstallationState.Installed &&
+        State == DeviceConnectionState.Online && CompanionState.IsInstalled() &&
         IsCompanionConnected;
 }
