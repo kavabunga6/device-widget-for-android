@@ -488,6 +488,7 @@ public sealed partial class MainWindow : Window
 
     internal void OpenSettings(bool owned = true)
     {
+        CloseTransientPopups();
         var window = new SettingsWindow(_settings) { Topmost = Topmost };
         if (owned && IsVisible)
             window.ShowDialog(this);
@@ -519,12 +520,20 @@ public sealed partial class MainWindow : Window
 
     private void CloseButton_Click(object? sender, RoutedEventArgs e)
     {
-        _drawerOpen = false;
-        ActionDrawerPopup.IsOpen = false;
-        NotificationPopup.IsOpen = false;
+        CloseTransientPopups();
         HideRequested?.Invoke(this, EventArgs.Empty);
         Hide();
     }
+
+    private void CloseTransientPopups()
+    {
+        // Avalonia popups are separate native windows. On macOS they can otherwise stay
+        // above an owned dialog, so close them explicitly for consistent cross-platform z-order.
+        _drawerOpen = false;
+        ActionDrawerPopup.IsOpen = false;
+        NotificationPopup.IsOpen = false;
+    }
+
     private void CollapsePanel_Click(object? sender, RoutedEventArgs e) => ToggleDrawer(false);
     private async void RefreshButton_Click(object? sender, RoutedEventArgs e) => await RefreshAdbAsync();
 
@@ -576,12 +585,7 @@ public sealed partial class MainWindow : Window
         if (_settings.Current.ShowScreenRecordingGuide)
         {
             var reopenActions = _drawerOpen;
-            if (reopenActions)
-            {
-                _drawerOpen = false;
-                ActionDrawerPopup.IsOpen = false;
-            }
-            NotificationPopup.IsOpen = false;
+            CloseTransientPopups();
             var guide = new ScreenRecordingWindow(_settings, device.Name, _recordingPath) { Topmost = Topmost };
             var confirmed = await guide.ShowDialog<bool?>(this);
             if (reopenActions)
@@ -650,6 +654,7 @@ public sealed partial class MainWindow : Window
             return;
         try
         {
+            CloseTransientPopups();
             var window = new RemoteFilesWindow(_adb, device.Serial) { Topmost = Topmost };
             window.Show(this);
             window.Activate();
@@ -666,6 +671,7 @@ public sealed partial class MainWindow : Window
             return;
         try
         {
+            CloseTransientPopups();
             var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
                 Title = "Отправить на Android",
@@ -681,6 +687,7 @@ public sealed partial class MainWindow : Window
 
     private void TransfersButton_Click(object? sender, RoutedEventArgs e)
     {
+        CloseTransientPopups();
         var window = new TransferQueueWindow(_runtime.Transfers, _boundSerial) { Topmost = Topmost };
         window.Show(this);
         window.Activate();
@@ -707,6 +714,7 @@ public sealed partial class MainWindow : Window
     {
         if (SelectedAdbDevice() is not { } device)
             return;
+        CloseTransientPopups();
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
             Title = "Установить APK",
@@ -751,7 +759,7 @@ public sealed partial class MainWindow : Window
 
     private void WirelessButton_Click(object? sender, RoutedEventArgs e)
     {
-        ToggleDrawer(false);
+        CloseTransientPopups();
         var window = new WirelessAdbWindow(_runtime) { Topmost = Topmost };
         window.ShowDialog(this);
         window.Activate();
@@ -761,7 +769,7 @@ public sealed partial class MainWindow : Window
     {
         if (SelectedAdbDevice() is not { } device)
             return;
-        ToggleDrawer(false);
+        CloseTransientPopups();
         var window = new CompanionWindow(_runtime, device.Serial, device.Name) { Topmost = Topmost };
         window.ShowDialog(this);
         window.Activate();

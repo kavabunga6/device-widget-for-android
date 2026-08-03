@@ -15,7 +15,11 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   package:
@@ -83,3 +87,38 @@ jobs:
           name: DeviceWidget-${{ steps.version.outputs.value }}-${{ matrix.rid }}
           path: artifacts/packages/*.tar.gz
           if-no-files-found: error
+
+  publish-release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: package
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Download Linux packages
+        uses: actions/download-artifact@v4
+        with:
+          pattern: DeviceWidget-*-linux-*
+          path: packaged
+          merge-multiple: true
+
+      - name: Replace release assets and checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          mkdir current-assets
+          gh release download "$GITHUB_REF_NAME" --dir current-assets
+          cp packaged/*.tar.gz current-assets/
+          cp THIRD_PARTY_NOTICES.md current-assets/
+          rm -f current-assets/SHA256SUMS.txt
+          (
+            cd current-assets
+            find . -maxdepth 1 -type f -print0 \
+              | sort -z \
+              | xargs -0 sha256sum \
+              | sed 's#  \./#  #' > SHA256SUMS.txt
+          )
+          gh release upload "$GITHUB_REF_NAME" packaged/*.tar.gz THIRD_PARTY_NOTICES.md --clobber
+          gh release upload "$GITHUB_REF_NAME" current-assets/SHA256SUMS.txt --clobber

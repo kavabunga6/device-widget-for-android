@@ -117,4 +117,4 @@ $sumLines = Get-ChildItem -LiteralPath $packageRoot -File |
 [System.IO.File]::WriteAllLines((Join-Path $packageRoot "SHA256SUMS.txt"), $sumLines, [System.Text.UTF8Encoding]::new($false))
 
 Write-Host "Release packages: $packageRoot"
-Write-Host "Linux and macOS packages must be produced natively with the platform build scripts or GitHub Actions workflows."
+Write-Host "macOS packages use the native macOS script. Linux packages use the Linux script natively or cross-published from macOS. All desktop platforms also have GitHub Actions workflows."

@@ -1,0 +1,138 @@
+name: Windows Packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Semantic version without the v prefix
+        required: true
+        default: 0.1.6
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  package:
+    name: ${{ matrix.rid }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: win-x64
+            runner: windows-2025
+          - rid: win-arm64
+            runner: windows-11-arm
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Resolve version
+        id: version
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_TYPE -eq "tag") {
+            $version = $env:GITHUB_REF_NAME.TrimStart("v")
+          } elseif ("${{ inputs.version }}") {
+            $version = "${{ inputs.version }}"
+          } else {
+            [xml]$props = Get-Content Directory.Build.props
+            $version = $props.Project.PropertyGroup.Version
+          }
+          if (-not $version) { throw "Version was not resolved." }
+          "value=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Build and verify package
+        shell: pwsh
+        run: |
+          $rid = "${{ matrix.rid }}"
+          $version = "${{ steps.version.outputs.value }}"
+          $publish = Join-Path $env:RUNNER_TEMP "publish-$rid"
+          $package = Join-Path $env:RUNNER_TEMP "package-$rid"
+          dotnet publish src/AndroidWidget.Desktop/AndroidWidget.Desktop.csproj `
+            --configuration Release --runtime $rid --self-contained true `
+            -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:EnableCompressionInSingleFile=true -p:DebugType=None -p:DebugSymbols=false `
+            -p:Version=$version --output $publish
+          if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed." }
+          New-Item -ItemType Directory -Path $package | Out-Null
+          Get-ChildItem $publish | Where-Object Extension -ne ".pdb" | Copy-Item -Destination $package -Recurse
+          foreach ($required in @("DeviceWidget.exe", "LICENSE", "THIRD_PARTY_NOTICES.md", "SOURCE_OFFER.md")) {
+            if (-not (Test-Path (Join-Path $package $required))) { throw "$required is missing." }
+          }
+          if (Get-ChildItem $package -Recurse -Filter "*.pdb") { throw "Debug symbols must not be packaged." }
+          $archiveDirectory = Join-Path $PWD "artifacts/packages"
+          New-Item -ItemType Directory -Path $archiveDirectory -Force | Out-Null
+          $archive = Join-Path $archiveDirectory "DeviceWidget-for-Android-$version-$rid.zip"
+          Compress-Archive -Path (Join-Path $package "*") -DestinationPath $archive -CompressionLevel Optimal
+
+      - name: Smoke-launch desktop host
+        shell: pwsh
+        run: |
+          $rid = "${{ matrix.rid }}"
+          $version = "${{ steps.version.outputs.value }}"
+          $archive = "artifacts/packages/DeviceWidget-for-Android-$version-$rid.zip"
+          $smoke = Join-Path $env:RUNNER_TEMP "smoke-$rid"
+          Expand-Archive $archive $smoke
+          $process = Start-Process (Join-Path $smoke "DeviceWidget.exe") -PassThru
+          Start-Sleep -Seconds 5
+          if ($process.HasExited) { throw "Device Widget exited with code $($process.ExitCode)." }
+          Stop-Process -Id $process.Id -Force
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: DeviceWidget-${{ steps.version.outputs.value }}-${{ matrix.rid }}
+          path: artifacts/packages/*.zip
+          if-no-files-found: error
+
+  publish-release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: package
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Download Windows packages
+        uses: actions/download-artifact@v4
+        with:
+          pattern: DeviceWidget-*-win-*
+          path: packaged
+          merge-multiple: true
+
+      - name: Replace release assets and checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          mkdir current-assets
+          gh release download "$GITHUB_REF_NAME" --dir current-assets
+          cp packaged/*.zip current-assets/
+          cp THIRD_PARTY_NOTICES.md current-assets/
+          rm -f current-assets/SHA256SUMS.txt
+          (
+            cd current-assets
+            find . -maxdepth 1 -type f -print0 \
+              | sort -z \
+              | xargs -0 sha256sum \
+              | sed 's#  \./#  #' > SHA256SUMS.txt
+          )
+          gh release upload "$GITHUB_REF_NAME" packaged/*.zip THIRD_PARTY_NOTICES.md --clobber
+          gh release upload "$GITHUB_REF_NAME" current-assets/SHA256SUMS.txt --clobber

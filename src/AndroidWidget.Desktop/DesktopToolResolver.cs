@@ -15,7 +15,7 @@ internal sealed class DesktopToolResolver
     private static ToolPaths Resolve()
     {
         if (!OperatingSystem.IsWindows())
-            return new ToolPaths("adb", "scrcpy");
+            return FindBundledUnixTools() ?? new ToolPaths("adb", "scrcpy");
 
         var root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "DeviceWidget", "tools", $"scrcpy-{ScrcpyVersion}");
@@ -35,6 +35,24 @@ internal sealed class DesktopToolResolver
             license.CopyTo(output);
         }
         return FindTools(root) ?? throw new InvalidOperationException("В архиве scrcpy не найдены adb.exe и scrcpy.exe.");
+    }
+
+    private static ToolPaths? FindBundledUnixTools()
+    {
+        var baseDirectory = AppContext.BaseDirectory;
+        var roots = new[]
+        {
+            Path.Combine(baseDirectory, "tools", $"scrcpy-{ScrcpyVersion}"),
+            Path.Combine(baseDirectory, "..", "Resources", "tools", $"scrcpy-{ScrcpyVersion}")
+        };
+        foreach (var root in roots.Select(Path.GetFullPath))
+        {
+            var adb = Path.Combine(root, "adb");
+            var scrcpy = Path.Combine(root, "scrcpy");
+            if (File.Exists(adb) && File.Exists(scrcpy) && File.Exists(Path.Combine(root, "scrcpy-server")))
+                return new ToolPaths(adb, scrcpy);
+        }
+        return null;
     }
 
     private static ToolPaths? FindTools(string root)

@@ -157,7 +157,7 @@ Smoke-тест создаёт временный сертификат, пров�
 ## Текущие границы
 
 - Windows, macOS и Linux releases используют общий Avalonia-виджет и одинаковую панель основных ADB/scrcpy-действий;
-- системные `adb`, `scrcpy` и terminal integration могут отличаться по способу установки, но вызываются единым UI;
+- Windows, macOS и Linux x64 packages содержат `adb` и `scrcpy`; Linux ARM64 использует системные инструменты из `PATH`, но все варианты вызываются единым UI;
 - QR pairing и расширенный удалённый браузер файлов остаются следующим протокольным этапом;
-- macOS и Linux проверяются нативными runtime smoke-тестами release workflows;
+- Windows, macOS и Linux проверяются нативными runtime smoke-тестами release workflows для x64 и ARM64;
 - Android 17 при переходе на target SDK 37 потребует отдельного runtime-разрешения на локальную сеть.

@@ -25,6 +25,21 @@ arguments, dependency versions and Windows cross-build commands are preserved
 in the scrcpy 4.0 corresponding source archive under `app/deps/ffmpeg.sh` and
 `release/build_windows.sh`.
 
+## Bundled scrcpy 4.0 for macOS and Linux x64
+
+The macOS and Linux x64 packages include the official static scrcpy 4.0 archive,
+including `scrcpy`, `scrcpy-server` and `adb`. The build verifies each asset:
+
+| Asset | SHA-256 |
+|---|---|
+| `scrcpy-macos-aarch64-v4.0.tar.gz` | `f5167fe047fe4a2ae2c2ea8634c7145a4d64d0b6005f24bb45639a965b8c60d4` |
+| `scrcpy-macos-x86_64-v4.0.tar.gz` | `b83169f856d7022ed0e4428d98acea18dde2d63f49611b52ea137577ce4efe6b` |
+| `scrcpy-linux-x86_64-v4.0.tar.gz` | `7daf05af5d575862e62b068cf6852d6068faf7ef3178f3735e3953e778fbf0ab` |
+
+These archives are published by the scrcpy project under the licenses and
+notices listed above. No official Linux ARM64 static asset is available, so that
+package uses system-provided tools.
+
 ## Desktop .NET dependencies
 
 | Component | Version | License |

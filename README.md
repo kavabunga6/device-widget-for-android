@@ -58,14 +58,18 @@ Companion не устанавливается автоматически. Уст
 | Платформа | Архитектуры | Интерфейс | ADB и scrcpy |
 |---|---|---|---|
 | Windows 10/11 | x64, ARM64 | общий Avalonia-виджет | встроенные ADB и scrcpy 4.0 |
-| macOS 14+ | Intel, Apple Silicon | общий Avalonia-виджет | используются из `PATH` |
-| Linux | x64, ARM64 | общий Avalonia-виджет | используются из `PATH` |
+| macOS 14+ | Intel, Apple Silicon | общий Avalonia-виджет | встроенные ADB и scrcpy 4.0 |
+| Linux | x64, ARM64 | общий Avalonia-виджет | x64: встроенные ADB и scrcpy 4.0; ARM64: из `PATH` |
 | Android 8.0+ | companion APK | сопряжение и статус соединения | не требуются |
 
 Windows, macOS и Linux используют один Avalonia desktop host с одинаковой
-телефонной карточкой, мини-режимом и панелью действий. `adb` и `scrcpy`
-в Windows входят в release-пакет. В macOS и Linux `adb` и `scrcpy` устанавливаются
-системным пакетным менеджером и должны быть доступны через `PATH`.
+телефонной карточкой, мини-режимом и панелью действий. В Windows в release-пакет
+входят ADB и scrcpy. В macOS оба инструмента берутся из официального статического
+архива scrcpy. Такой же архив входит в Linux x64. Для Linux ARM64 официальных
+готовых архивов нет, поэтому `adb` и `scrcpy` устанавливаются системным пакетным
+менеджером и должны быть доступны через `PATH`. Официальный Windows-архив scrcpy
+выпускается только для x64; в Windows 11 ARM64 он запускается через системную
+x64-эмуляцию.
 Когда подключённых устройств нет, карточка скрывается, а приложение продолжает
 работать через системный tray/menu bar. Из меню можно показать виджет, обновить
 список устройств, открыть настройки или завершить приложение.
@@ -86,7 +90,9 @@ Windows, macOS и Linux используют один Avalonia desktop host с �
 ## Запуск из исходников
 
 Требования: .NET 10 SDK. В Windows ADB и scrcpy берутся из встроенного ресурса;
-в macOS и Linux они должны быть доступны через `PATH`.
+в macOS и Linux x64 оба инструмента добавляются упаковщиком. Для запуска из
+исходников и для Linux ARM64 системные `adb` и `scrcpy` должны быть доступны через
+`PATH`.
 
 ```powershell
 git clone https://github.com/kavabunga6/device-widget-for-android.git
@@ -153,14 +159,18 @@ macOS-пакеты собираются только нативно на macOS, 
 ./tools/build_macos_bundle.sh 0.1.6 osx-x64 artifacts/packages
 ```
 
-Linux-пакеты также собираются нативно, чтобы сохранить исполняемые права:
+Linux-пакеты собираются нативно на Linux либо кросс-публикуются с macOS;
+упаковщик в обоих случаях проверяет ELF-архитектуру и исполняемые права:
 
 ```bash
 ./tools/build_linux_package.sh 0.1.6 linux-x64 artifacts/packages
 ./tools/build_linux_package.sh 0.1.6 linux-arm64 artifacts/packages
 ```
 
-Те же процессы автоматизированы workflows **macOS Packages** и **Linux Packages**.
+Те же процессы автоматизированы workflows **macOS Packages**, **Linux Packages**
+и **Windows Packages**. Каждый matrix job собирается и smoke-тестируется на своей
+нативной архитектуре; при обновлении тега workflow заменяют соответствующие
+release-assets и заново формируют общий `SHA256SUMS.txt`.
 
 Ключи и пароли не хранятся в репозитории. Статус подписи каждого пакета указан
 в release notes.
@@ -196,7 +206,7 @@ licenses/                              shipped license texts and notices
 third_party/sources/                   corresponding-source manifest
 tools/build_release.ps1               reproducible release packaging
 tools/build_macos_bundle.sh           native macOS bundle, icon, signing and verification
-tools/build_linux_package.sh          native Linux packaging and executable-mode verification
+tools/build_linux_package.sh          Linux packaging/cross-publishing and ELF verification
 tools/DocsCapture/                     reproducible documentation screenshots
 ```
 
