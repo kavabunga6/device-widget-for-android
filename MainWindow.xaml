@@ -249,16 +249,17 @@
                                 <TextBlock Text="Экран" Margin="0,5,0,0" FontSize="10.5" TextAlignment="Center" />
                             </StackPanel>
                         </Button>
-                        <Button Style="{StaticResource AppTileButton}" Click="RecordButton_Click"
+                        <Button x:Name="RecordButton" Style="{StaticResource AppTileButton}" Click="RecordButton_Click"
                                 ToolTip="Настроить и запустить запись экрана в MKV">
                             <StackPanel HorizontalAlignment="Center">
-                                <Border Width="48" Height="48" CornerRadius="14" Background="#C34755">
+                                <Border x:Name="RecordTileIcon" Width="48" Height="48" CornerRadius="14" Background="#C34755">
                                     <Viewbox Width="22" Height="22">
                                         <Path Data="M 12,3 A 9,9 0 1 1 11.9,3 Z M 12,8 A 4,4 0 1 1 11.9,8 Z"
                                               Stroke="White" StrokeThickness="1.8" Fill="Transparent" />
                                     </Viewbox>
                                 </Border>
-                                <TextBlock Text="Запись" Margin="0,5,0,0" FontSize="10.5" TextAlignment="Center" />
+                                <TextBlock x:Name="RecordButtonText" Text="Запись" Margin="0,5,0,0"
+                                           FontSize="10.5" TextAlignment="Center" />
                             </StackPanel>
                         </Button>
                         <Button Style="{StaticResource AppTileButton}" Click="FilesButton_Click"
@@ -401,6 +402,40 @@
                 </StackPanel>
             </Grid>
             </Border>
+        </Popup>
+
+        <Popup x:Name="OperationBubblePopup" PlacementTarget="{Binding ElementName=PhoneShell}"
+               Placement="Left" HorizontalOffset="-7" AllowsTransparency="True"
+               PopupAnimation="Fade" StaysOpen="True">
+            <Grid Width="278" Margin="8">
+                <Border Margin="0,0,9,0" Padding="14,12" CornerRadius="16"
+                        Background="{DynamicResource SurfaceBrush}" BorderBrush="#4AAE70" BorderThickness="1"
+                        Cursor="Hand" MouseLeftButtonUp="OperationBubble_MouseLeftButtonUp">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="32" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Width="26" Height="26" CornerRadius="13" VerticalAlignment="Top"
+                                Background="#4AAE70">
+                            <TextBlock Text="✓" Foreground="White" FontWeight="Bold"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="7,0,0,0">
+                            <TextBlock Text="Видео сохранено" FontSize="11.5" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextPrimary}" />
+                            <TextBlock x:Name="OperationBubbleMessageText" Margin="0,4,0,0" FontSize="10.5"
+                                       Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"
+                                       MaxHeight="48" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="Нажмите, чтобы открыть видео" Margin="0,7,0,0" FontSize="9.5"
+                                       Foreground="#4AAE70" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+                <Path Data="M 0,0 L 10,8 L 0,16 Z" Width="10" Height="16"
+                      Fill="{DynamicResource SurfaceBrush}" Stretch="Fill"
+                      HorizontalAlignment="Right" VerticalAlignment="Center" />
+            </Grid>
         </Popup>
 
         <Popup x:Name="SmsBubblePopup" PlacementTarget="{Binding ElementName=PhoneShell}"

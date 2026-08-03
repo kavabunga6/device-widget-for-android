@@ -150,6 +150,8 @@ public sealed class AndroidDeviceService : IAndroidDeviceService
 
     public bool IsScreenRecording(string serial) => _screenMirroring.IsRecording(serial);
 
+    public string? GetScreenRecordingPath(string serial) => _screenMirroring.GetRecordingPath(serial);
+
     public OperationResult StopScreenRecording(string serial) => _screenMirroring.StopRecording(serial);
 
     public OperationResult StartShell(string serial)

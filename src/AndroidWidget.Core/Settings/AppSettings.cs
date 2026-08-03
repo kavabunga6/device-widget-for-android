@@ -16,6 +16,7 @@ public sealed record AppSettings(
     double? MainCardHeight = null,
     ScrcpyPreset ScrcpyPreset = ScrcpyPreset.Balanced,
     string? RecordingFolder = null,
+    bool ShowScreenRecordingGuide = true,
     bool NotifyNewPhotos = true,
     bool AutoImportPhotos = false,
     string? PhotoImportFolder = null);

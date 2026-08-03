@@ -4,7 +4,7 @@
         xmlns:chrome="clr-namespace:AndroidWidget.Presentation.Chrome"
         xmlns:core="clr-namespace:AndroidWidget.Core;assembly=AndroidWidget.Core"
         Title="Запись экрана" Icon="{StaticResource AppIconImage}"
-        Width="520" Height="500" MinWidth="480" MinHeight="470"
+        Width="520" Height="520" MinWidth="480" MinHeight="490"
         ResizeMode="NoResize" WindowStartupLocation="CenterOwner"
         Style="{StaticResource DialogWindowStyle}">
     <Grid>
@@ -42,10 +42,13 @@
                                Text="1. Запись начнётся сразу и откроется окно scrcpy с экраном телефона." />
                     <TextBlock Margin="0,6,0,0" TextWrapping="Wrap"
                                Foreground="{DynamicResource TextSecondary}"
-                               Text="2. Для завершения нажмите «Остановить запись» в этом окне. Также можно закрыть scrcpy." />
+                               Text="2. Для завершения снова откройте действия карточки и нажмите «Остановить». Также можно закрыть scrcpy." />
                     <TextBlock Margin="0,6,0,0" TextWrapping="Wrap"
                                Foreground="{DynamicResource TextSecondary}"
                                Text="3. Файл MKV будет готов только после остановки записи." />
+                    <CheckBox x:Name="DoNotShowAgainCheck" Margin="0,14,0,0"
+                              Content="Больше не показывать это окно"
+                              Style="{StaticResource DialogCheckBox}" />
                 </StackPanel>
             </Border>
 
@@ -78,17 +81,14 @@
 
             <Grid Grid.Row="5" Margin="0,14,0,0">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <Button x:Name="RevealButton" Content="Показать файл" Visibility="Collapsed"
-                        Style="{StaticResource DialogButton}" Click="RevealButton_Click" />
-                <Button x:Name="CloseDialogButton" Grid.Column="2" Content="Отмена" MinWidth="92"
+                <Button x:Name="CloseDialogButton" Grid.Column="1" Content="Отмена" MinWidth="92"
                         Margin="0,0,8,0" Style="{StaticResource DialogButton}"
                         Click="CloseButton_Click" />
-                <Button x:Name="PrimaryButton" Grid.Column="3" Content="Начать запись" MinWidth="142"
+                <Button x:Name="PrimaryButton" Grid.Column="2" Content="Начать запись" MinWidth="142"
                         Style="{StaticResource DialogButton}" IsDefault="True"
                         Click="PrimaryButton_Click" />
             </Grid>

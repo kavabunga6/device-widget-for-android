@@ -32,6 +32,10 @@ public partial class DeviceMiniWindow : Window
     private bool _actionRunning;
     private readonly NotificationBubbleStack _smsBubbles = new();
     private readonly DispatcherTimer _operationBubbleTimer;
+    private readonly DispatcherTimer _recordingTimer;
+    private bool _recordingWasActive;
+    private string? _recordingPath;
+    private string? _operationBubblePath;
 
     public string Serial => _device.Serial;
 
@@ -57,7 +61,11 @@ public partial class DeviceMiniWindow : Window
         _photoImport.PhotoDetected += PhotoDetected;
         _operationBubbleTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(6) };
         _operationBubbleTimer.Tick += (_, _) => HideOperationBubble();
+        _recordingTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
+        _recordingTimer.Tick += (_, _) => MonitorRecording();
         _device = device;
+        _recordingWasActive = _devices.IsScreenRecording(device.Serial);
+        _recordingPath = _devices.GetScreenRecordingPath(device.Serial);
         Topmost = _settings.Current.Topmost;
         Closed += (_, _) =>
         {
@@ -67,10 +75,15 @@ public partial class DeviceMiniWindow : Window
             _smsBubbles.Changed -= SmsBubblesChanged;
             _smsBubbles.Dispose();
             _operationBubbleTimer.Stop();
+            _recordingTimer.Stop();
             SmsBubblePopup.IsOpen = false;
             OperationBubblePopup.IsOpen = false;
         };
-        Loaded += (_, _) => RefreshSmsBubbleVisibility();
+        Loaded += (_, _) =>
+        {
+            RefreshSmsBubbleVisibility();
+            _recordingTimer.Start();
+        };
         UpdateDevice(device);
     }
 
@@ -202,8 +215,13 @@ public partial class DeviceMiniWindow : Window
     private void ActionMenu_Opening(object sender, RoutedEventArgs e)
     {
         var enabled = _device.State == DeviceConnectionState.Online && !_actionRunning;
+        var recording = _devices.IsScreenRecording(_device.Serial);
         ScreenMenuItem.IsEnabled = enabled;
-        RecordMenuItem.IsEnabled = enabled;
+        RecordMenuItem.IsEnabled = recording || enabled;
+        RecordMenuItem.Header = recording ? "Остановить" : "Запись";
+        RecordMenuItem.ToolTip = recording
+            ? "Остановить запись экрана и сохранить MKV"
+            : "Настроить и запустить запись экрана в MKV";
         FilesMenuItem.IsEnabled = enabled;
         ScreenshotMenuItem.IsEnabled = enabled;
         InstallMenuItem.IsEnabled = enabled;
@@ -236,16 +254,79 @@ public partial class DeviceMiniWindow : Window
             SetActionStatus(result.BestMessage, true);
     }
 
-    private void RecordMenuItem_Click(object sender, RoutedEventArgs e)
+    private async void RecordMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        var window = new ScreenRecordingWindow(_device, _devices, _settings, _desktop, _recordings)
+        if (_devices.IsScreenRecording(_device.Serial))
         {
-            Owner = this
-        };
-        window.ShowDialog();
-        if (window.RecordingCompleted)
-            ShowOperationBubble("Запись сохранена", Path.GetFileName(window.OutputPath),
-                OperationBubbleState.Success);
+            await StopRecordingAsync();
+            return;
+        }
+
+        var file = _recordings.CreateFilePath(_device);
+        if (_settings.Current.ShowScreenRecordingGuide)
+        {
+            var guide = new ScreenRecordingWindow(_device, _settings, file) { Owner = this };
+            if (guide.ShowDialog() != true)
+                return;
+        }
+
+        var result = _devices.StartScreenRecording(_device.Serial, file, _settings.Current.ScrcpyPreset);
+        if (!result.IsSuccess)
+        {
+            ShowOperationBubble("Запись не начата", result.BestMessage, OperationBubbleState.Error);
+            return;
+        }
+
+        _recordingPath = file;
+        _recordingWasActive = true;
+        SetActionStatus("Идёт запись экрана · откройте меню и нажмите «Остановить»");
+    }
+
+    private async Task StopRecordingAsync()
+    {
+        var path = _recordingPath ?? _devices.GetScreenRecordingPath(_device.Serial);
+        _recordingWasActive = false;
+        RecordMenuItem.IsEnabled = false;
+        SetActionStatus("Завершаю запись…");
+        var result = await Task.Run(() => _devices.StopScreenRecording(_device.Serial));
+        RecordMenuItem.IsEnabled = true;
+        if (!result.IsSuccess && _devices.IsScreenRecording(_device.Serial))
+        {
+            _recordingWasActive = true;
+            ShowOperationBubble("Не удалось остановить запись", result.BestMessage, OperationBubbleState.Error);
+            return;
+        }
+
+        _recordingPath = null;
+        CompleteRecording(path);
+    }
+
+    private void MonitorRecording()
+    {
+        var active = _devices.IsScreenRecording(_device.Serial);
+        if (active && !_recordingWasActive)
+        {
+            _recordingWasActive = true;
+            _recordingPath = _devices.GetScreenRecordingPath(_device.Serial);
+        }
+        else if (!active && _recordingWasActive)
+        {
+            var path = _recordingPath;
+            _recordingWasActive = false;
+            _recordingPath = null;
+            CompleteRecording(path);
+        }
+    }
+
+    private void CompleteRecording(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+        {
+            ShowOperationBubble("Запись завершена", "Видеофайл не найден", OperationBubbleState.Error);
+            return;
+        }
+
+        ShowOperationBubble("Видео сохранено", Path.GetFileName(path), OperationBubbleState.Success, path);
     }
 
     private void TransfersMenuItem_Click(object sender, RoutedEventArgs e) =>
@@ -340,12 +421,20 @@ public partial class DeviceMiniWindow : Window
 
     private void OperationBubble_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
+        if (_operationBubblePath is { } path)
+        {
+            var result = _desktop.RevealFile(path);
+            if (!result.IsSuccess)
+                SetActionStatus(result.BestMessage, true);
+        }
         HideOperationBubble();
         e.Handled = true;
     }
 
-    private void ShowOperationBubble(string title, string message, OperationBubbleState state)
+    private void ShowOperationBubble(string title, string message, OperationBubbleState state,
+        string? revealPath = null)
     {
+        _operationBubblePath = revealPath;
         SmsBubblePopup.IsOpen = false;
         _smsBubbles.Pause();
         _operationBubbleTimer.Stop();
@@ -374,18 +463,22 @@ public partial class DeviceMiniWindow : Window
         OperationBubbleIcon.FontFamily = state == OperationBubbleState.Progress
             ? new FontFamily("Segoe Fluent Icons")
             : new FontFamily("Segoe UI");
-        OperationBubbleHintText.Text = state switch
-        {
-            OperationBubbleState.Success => "Готово · нажмите, чтобы скрыть",
-            OperationBubbleState.Error => "Не выполнено · нажмите, чтобы скрыть",
-            _ => "Не отключайте телефон"
-        };
+        OperationBubbleHintText.Text = revealPath is not null
+            ? "Нажмите, чтобы открыть видео"
+            : state switch
+            {
+                OperationBubbleState.Success => "Готово · нажмите, чтобы скрыть",
+                OperationBubbleState.Error => "Не выполнено · нажмите, чтобы скрыть",
+                _ => "Не отключайте телефон"
+            };
         OperationBubblePopup.IsOpen = true;
         if (state != OperationBubbleState.Progress)
         {
-            _operationBubbleTimer.Interval = state == OperationBubbleState.Error
-                ? TimeSpan.FromSeconds(10)
-                : TimeSpan.FromSeconds(6);
+            _operationBubbleTimer.Interval = revealPath is not null
+                ? NotificationDisplayDuration
+                : state == OperationBubbleState.Error
+                    ? TimeSpan.FromSeconds(10)
+                    : TimeSpan.FromSeconds(6);
             _operationBubbleTimer.Start();
         }
     }
@@ -394,6 +487,7 @@ public partial class DeviceMiniWindow : Window
     {
         _operationBubbleTimer.Stop();
         OperationBubblePopup.IsOpen = false;
+        _operationBubblePath = null;
         RefreshSmsBubbleVisibility();
     }
 

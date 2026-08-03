@@ -57,6 +57,9 @@ public sealed class JsonSettingsService : ISettingsService
             settings = document.RootElement.TryGetProperty(nameof(AppSettings.ShowSmsBubbles), out _)
                 ? settings
                 : settings with { ShowSmsBubbles = true };
+            settings = document.RootElement.TryGetProperty(nameof(AppSettings.ShowScreenRecordingGuide), out _)
+                ? settings
+                : settings with { ShowScreenRecordingGuide = true };
             return settings with
             {
                 NotificationDisplaySeconds = settings.NotificationDisplaySeconds is 5 or 10 or 15 or 30 or 60
