@@ -4,7 +4,7 @@ namespace AndroidWidget.Desktop;
 
 internal enum DesktopTransferState { Queued, Running, Completed, Failed, Cancelled }
 
-internal sealed record DesktopTransferSnapshot(Guid Id, string Serial, string Name, bool IsApk,
+internal sealed record DesktopTransferSnapshot(Guid Id, string Serial, string Name, string LocalPath, bool IsApk,
     DesktopTransferState State, double? Progress, string Message, DateTimeOffset CreatedAt)
 {
     public bool CanCancel => State is DesktopTransferState.Queued or DesktopTransferState.Running;
@@ -132,7 +132,7 @@ internal sealed class DesktopTransferQueue : IDisposable
         public string Message { get; set; } = "В очереди";
         public CancellationTokenSource Cancellation { get; } = new();
         public DesktopTransferSnapshot Snapshot() => new(Id, Serial,
-            System.IO.Path.GetFileName(Path.TrimEnd(System.IO.Path.DirectorySeparatorChar)), IsApk,
+            System.IO.Path.GetFileName(Path.TrimEnd(System.IO.Path.DirectorySeparatorChar)), Path, IsApk,
             State, Progress, Message, CreatedAt);
     }
 }

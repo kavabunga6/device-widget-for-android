@@ -22,6 +22,8 @@ internal sealed record PortableRecordingEnded(string Serial, string OutputPath, 
 
 internal sealed class PortableAdbService
 {
+    private static readonly UTF8Encoding StrictUtf8 = new(false, true);
+    private static readonly Encoding Windows1251 = CreateWindows1251();
     private readonly object _recordingGate = new();
     private readonly Dictionary<string, ActiveRecording> _recordings = new(StringComparer.Ordinal);
     private readonly DesktopToolResolver _tools = new();
@@ -69,8 +71,9 @@ internal sealed class PortableAdbService
             throw new InvalidOperationException(result.Message);
         return result.Output.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
             .Where(name => name is not "." and not "..")
-            .Select(name =>
+            .Select(rawName =>
             {
+                var name = RepairUtf8Mojibake(rawName);
                 var directory = name.EndsWith('/');
                 var cleanName = name.TrimEnd('/');
                 return new PortableRemoteEntry(cleanName, $"{path.TrimEnd('/')}/{cleanName}", directory);
@@ -78,6 +81,45 @@ internal sealed class PortableAdbService
             .OrderByDescending(entry => entry.IsDirectory)
             .ThenBy(entry => entry.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
+
+    private static Encoding CreateWindows1251()
+    {
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        return Encoding.GetEncoding(1251, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
+    }
+
+    private static string RepairUtf8Mojibake(string value)
+    {
+        var originalScore = MojibakeScore(value);
+        if (originalScore < 2)
+            return value;
+        try
+        {
+            var repaired = StrictUtf8.GetString(Windows1251.GetBytes(value));
+            return MojibakeScore(repaired) <= originalScore - 2 ? repaired : value;
+        }
+        catch (EncoderFallbackException)
+        {
+            return value;
+        }
+        catch (DecoderFallbackException)
+        {
+            return value;
+        }
+    }
+
+    private static int MojibakeScore(string value)
+    {
+        var score = 0;
+        for (var index = 0; index < value.Length; index++)
+        {
+            if (value[index] is 'Р' or 'С')
+                score++;
+            else if (value[index] == 'в' && index + 1 < value.Length && value[index + 1] is >= '\u0400' and <= '\u04ff')
+                score++;
+        }
+        return score;
     }
 
     public Task<PortableCommandResult> PullAsync(string serial, string remotePath, string localPath,

@@ -34,5 +34,8 @@
   </Application.Resources>
   <Application.Styles>
     <FluentTheme />
+    <Style Selector="ListBox.remote-files ListBoxItem:selected /template/ ContentPresenter">
+      <Setter Property="TextElement.Foreground" Value="White" />
+    </Style>
   </Application.Styles>
 </Application>

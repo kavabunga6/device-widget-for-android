@@ -57,8 +57,8 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
         ActionDrawerPopup.PlacementTarget = PhoneShell;
         NotificationPopup.PlacementTarget = PhoneShell;
-        PhoneShell.AddHandler(PointerPressedEvent, PhoneShell_RightPointerPressed,
-            RoutingStrategies.Tunnel, handledEventsToo: true);
+        PhoneShell.AddHandler(ContextRequestedEvent, PhoneShell_ContextRequested,
+            RoutingStrategies.Bubble, handledEventsToo: true);
         ApplySettings();
         _settings.Changed += Settings_Changed;
         ProductVersionText.Text = ProductVersion.ProductLabel;
@@ -245,10 +245,8 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void PhoneShell_RightPointerPressed(object? sender, PointerPressedEventArgs e)
+    private void PhoneShell_ContextRequested(object? sender, ContextRequestedEventArgs e)
     {
-        if (!e.GetCurrentPoint(this).Properties.IsRightButtonPressed)
-            return;
         Activate();
         if (_miniMode)
             MiniContent.ContextMenu?.Open(MiniContent);
@@ -296,8 +294,15 @@ public sealed partial class MainWindow : Window
                 _transferStates[transfer.Id] = transfer.State;
                 if (previous == transfer.State || transfer.State == DesktopTransferState.Running)
                     continue;
-                if (transfer.State is DesktopTransferState.Completed or DesktopTransferState.Failed or DesktopTransferState.Cancelled)
+                if (transfer.State == DesktopTransferState.Completed && !transfer.IsApk)
+                {
+                    ShowNotification($"{transfer.Name}: {transfer.Message} · нажмите, чтобы открыть",
+                        () => OpenTransferredPath(transfer.LocalPath));
+                }
+                else if (transfer.State is DesktopTransferState.Completed or DesktopTransferState.Failed or DesktopTransferState.Cancelled)
+                {
                     ShowNotification($"{transfer.Name}: {transfer.Message}");
+                }
             }
         });
     }
@@ -915,6 +920,19 @@ public sealed partial class MainWindow : Window
         catch
         {
             // Saving succeeded; revealing the file is an optional desktop integration.
+        }
+    }
+
+    private void OpenTransferredPath(string path)
+    {
+        try
+        {
+            DesktopFileLauncher.Open(path);
+        }
+        catch (Exception ex)
+        {
+            SetStatus(ex.Message, true);
+            ShowNotification($"Не удалось открыть: {ex.Message}");
         }
     }
 

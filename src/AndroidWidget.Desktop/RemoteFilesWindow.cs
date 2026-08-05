@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using Avalonia;
@@ -56,6 +55,7 @@ internal sealed class RemoteFilesWindow : Window
         root.Children.Add(toolbar);
 
         _entries[Grid.RowProperty] = 2;
+        _entries.Classes.Add("remote-files");
         _entries.DoubleTapped += async (_, _) => await OpenSelectedAsync();
         root.Children.Add(_entries);
 
@@ -144,7 +144,7 @@ internal sealed class RemoteFilesWindow : Window
             var result = await _adb.PullAsync(_serial, entry.Path, localPath, _lifetime.Token);
             if (!result.IsSuccess)
                 throw new InvalidOperationException(result.Message);
-            OpenLocalFile(localPath);
+            DesktopFileLauncher.Open(localPath);
             _status.Text = "Файл открыт из временной копии ✓";
         }
         catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
@@ -202,22 +202,4 @@ internal sealed class RemoteFilesWindow : Window
     private static string Hash(string value) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
 
-    private static void OpenLocalFile(string path)
-    {
-        ProcessStartInfo info;
-        if (OperatingSystem.IsWindows())
-            info = new ProcessStartInfo(path) { UseShellExecute = true };
-        else if (OperatingSystem.IsMacOS())
-        {
-            info = new ProcessStartInfo("/usr/bin/open") { UseShellExecute = false };
-            info.ArgumentList.Add(path);
-        }
-        else
-        {
-            info = new ProcessStartInfo("xdg-open") { UseShellExecute = false };
-            info.ArgumentList.Add(path);
-        }
-        if (Process.Start(info) is null)
-            throw new InvalidOperationException("Системное приложение для этого типа файла не найдено.");
-    }
 }
