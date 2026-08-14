@@ -101,6 +101,10 @@ foreach ($target in $desktopTargets) {
         Where-Object Extension -ne ".pdb" |
         Select-Object -ExpandProperty FullName
     Compress-Archive -Path $packageItems -DestinationPath $archive -CompressionLevel Optimal
+
+    & (Join-Path $repoRoot "tools\build_windows_installer.ps1") `
+        -Version $Version -Rid $target.Rid -PublishDirectory $publish -OutputDirectory $packageRoot
+    if ($LASTEXITCODE -ne 0) { throw "Installer build failed for $($target.Rid)." }
 }
 
 foreach ($entry in $sourceHashes.GetEnumerator()) {

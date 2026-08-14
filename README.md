@@ -62,6 +62,19 @@ Companion не устанавливается автоматически. Уст
 | Linux | x64, ARM64 | общий Avalonia-виджет | x64: встроенные ADB и scrcpy 4.0; ARM64: из `PATH` |
 | Android 8.0+ | companion APK | сопряжение и статус соединения | не требуются |
 
+## Установка
+
+Для Windows рекомендуется файл `DeviceWidget-for-Android-<версия>-win-x64-Setup.exe`
+или вариант `win-arm64` для нативной Windows on ARM. Инсталлятор устанавливает
+приложение для текущего пользователя без запроса прав администратора, добавляет
+ярлык в меню «Пуск», предлагает ярлык на рабочем столе и регистрирует штатное
+удаление в разделе Windows «Установленные приложения». После установки архив и
+рабочую папку хранить не требуется.
+
+Повторный запуск установщика с новой версией обновляет существующую установку.
+Пользовательские настройки, сопряжения и папки снимков при обновлении или удалении
+приложения не стираются. Автозапуск включается отдельно в настройках виджета.
+
 Windows, macOS и Linux используют один Avalonia desktop host с одинаковой
 телефонной карточкой, мини-режимом и панелью действий. В Windows в release-пакет
 входят ADB и scrcpy. В macOS оба инструмента берутся из официального статического
@@ -140,8 +153,9 @@ dotnet run --project AndroidWidget.csproj -c Release -- --verify-companion-bundl
 dotnet run --project AndroidWidget.csproj -c Release -- --verify-wireless-qr
 ```
 
-Windows-этап создаёт Windows x64/ARM64, подписанный companion APK, контрольные
-суммы и архивы corresponding source:
+Windows-этап создаёт Windows x64/ARM64 ZIP-пакеты и установщики `Setup.exe`,
+companion APK, контрольные суммы и архивы corresponding source. Для локальной
+сборки установщиков требуется Inno Setup 6:
 
 ```powershell
 $env:DEVICE_WIDGET_ANDROID_KEYSTORE = 'path-to-release.jks'

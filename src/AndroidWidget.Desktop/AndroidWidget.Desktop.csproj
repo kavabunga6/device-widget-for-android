@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <RootNamespace>AndroidWidget.Desktop</RootNamespace>
     <AssemblyName>DeviceWidget</AssemblyName>
+    <ApplicationIcon Condition="$([MSBuild]::IsOSPlatform('Windows'))">..\..\installer\windows\DeviceWidget.ico</ApplicationIcon>
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
 

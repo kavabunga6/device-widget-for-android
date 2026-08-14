@@ -62,6 +62,16 @@ Relevant license texts and retained copyright notices are in `licenses/`:
 `ANGLE-BSD-3-Clause.txt`, `dotnet-runtime-MIT.txt`, and
 `dotnet-runtime-THIRD-PARTY-NOTICES.txt`.
 
+## Windows installer
+
+The Windows `Setup.exe` packages are produced with Inno Setup 6.7.3. The
+installer engine is Copyright (C) 1997-2026 Jordan Russell and portions are
+Copyright (C) 2000-2026 Martijn Laan. Its permissive license text is retained in
+`licenses/Inno-Setup.txt`. Inno Setup is used only to package the application;
+it is not part of the application runtime. The upstream project requests that
+commercial users of its compiler purchase a commercial license; downstream
+commercial builders should review that policy before producing installers.
+
 ## Android companion dependencies
 
 | Component | Version | License |

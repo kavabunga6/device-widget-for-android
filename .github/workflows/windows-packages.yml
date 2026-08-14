@@ -43,6 +43,10 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --version=6.7.3 --no-progress -y
+
       - name: Resolve version
         id: version
         shell: pwsh
@@ -81,6 +85,8 @@ jobs:
           New-Item -ItemType Directory -Path $archiveDirectory -Force | Out-Null
           $archive = Join-Path $archiveDirectory "DeviceWidget-for-Android-$version-$rid.zip"
           Compress-Archive -Path (Join-Path $package "*") -DestinationPath $archive -CompressionLevel Optimal
+          ./tools/build_windows_installer.ps1 `
+            -Version $version -Rid $rid -PublishDirectory $publish -OutputDirectory $archiveDirectory
 
       - name: Smoke-launch desktop host
         shell: pwsh
@@ -95,11 +101,29 @@ jobs:
           if ($process.HasExited) { throw "Device Widget exited with code $($process.ExitCode)." }
           Stop-Process -Id $process.Id -Force
 
+      - name: Smoke-install and uninstall
+        shell: pwsh
+        run: |
+          $rid = "${{ matrix.rid }}"
+          $version = "${{ steps.version.outputs.value }}"
+          $setup = "artifacts/packages/DeviceWidget-for-Android-$version-$rid-Setup.exe"
+          $install = Start-Process $setup -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-' -PassThru -Wait
+          if ($install.ExitCode -ne 0) { throw "Installer exited with code $($install.ExitCode)." }
+          $installedExe = Join-Path $env:LOCALAPPDATA 'Programs\Device Widget\DeviceWidget.exe'
+          if (-not (Test-Path $installedExe)) { throw 'Installed application was not found.' }
+          $process = Start-Process $installedExe -PassThru
+          Start-Sleep -Seconds 5
+          if ($process.HasExited) { throw "Installed application exited with code $($process.ExitCode)." }
+          Stop-Process -Id $process.Id -Force
+          $uninstaller = Join-Path $env:LOCALAPPDATA 'Programs\Device Widget\unins000.exe'
+          $uninstall = Start-Process $uninstaller -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -PassThru -Wait
+          if ($uninstall.ExitCode -ne 0) { throw "Uninstaller exited with code $($uninstall.ExitCode)." }
+
       - name: Upload package
         uses: actions/upload-artifact@v4
         with:
           name: DeviceWidget-${{ steps.version.outputs.value }}-${{ matrix.rid }}
-          path: artifacts/packages/*.zip
+          path: artifacts/packages/*
           if-no-files-found: error
 
   publish-release:
@@ -124,7 +148,7 @@ jobs:
         run: |
           mkdir current-assets
           gh release download "$GITHUB_REF_NAME" --dir current-assets
-          cp packaged/*.zip current-assets/
+          cp packaged/* current-assets/
           cp THIRD_PARTY_NOTICES.md current-assets/
           rm -f current-assets/SHA256SUMS.txt
           (
@@ -134,5 +158,5 @@ jobs:
               | xargs -0 sha256sum \
               | sed 's#  \./#  #' > SHA256SUMS.txt
           )
-          gh release upload "$GITHUB_REF_NAME" packaged/*.zip THIRD_PARTY_NOTICES.md --clobber
+          gh release upload "$GITHUB_REF_NAME" packaged/* THIRD_PARTY_NOTICES.md --clobber
           gh release upload "$GITHUB_REF_NAME" current-assets/SHA256SUMS.txt --clobber
