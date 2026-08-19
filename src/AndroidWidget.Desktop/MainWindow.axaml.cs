@@ -73,6 +73,7 @@ public sealed partial class MainWindow : Window
         {
             ApplySelectedDevice();
         };
+        Deactivated += (_, _) => ToggleDrawer(false);
         Closing += (_, _) => PersistWindowState();
         Closed += (_, _) =>
         {
@@ -411,7 +412,7 @@ public sealed partial class MainWindow : Window
         if (openActions)
         {
             Activate();
-            ToggleDrawer(true);
+            ToggleDrawer();
         }
         e.Handled = true;
     }
