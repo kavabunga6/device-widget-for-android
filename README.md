@@ -162,23 +162,23 @@ $env:DEVICE_WIDGET_ANDROID_KEYSTORE = 'path-to-release.jks'
 $env:DEVICE_WIDGET_ANDROID_STORE_PASSWORD = '<from-local-secret-store>'
 $env:DEVICE_WIDGET_ANDROID_KEY_ALIAS = 'release-alias'
 $env:DEVICE_WIDGET_ANDROID_KEY_PASSWORD = '<from-local-secret-store>'
-./tools/build_release.ps1 -Version 0.1.10
+./tools/build_release.ps1 -Version 0.1.11
 ```
 
 macOS-пакеты собираются только нативно на macOS, чтобы сохранить исполняемые права,
 создать `.icns`, проверить `Info.plist` и выполнить ad-hoc signing:
 
 ```bash
-./tools/build_macos_bundle.sh 0.1.10 osx-arm64 artifacts/packages
-./tools/build_macos_bundle.sh 0.1.10 osx-x64 artifacts/packages
+./tools/build_macos_bundle.sh 0.1.11 osx-arm64 artifacts/packages
+./tools/build_macos_bundle.sh 0.1.11 osx-x64 artifacts/packages
 ```
 
 Linux-пакеты собираются нативно на Linux либо кросс-публикуются с macOS;
 упаковщик в обоих случаях проверяет ELF-архитектуру и исполняемые права:
 
 ```bash
-./tools/build_linux_package.sh 0.1.10 linux-x64 artifacts/packages
-./tools/build_linux_package.sh 0.1.10 linux-arm64 artifacts/packages
+./tools/build_linux_package.sh 0.1.11 linux-x64 artifacts/packages
+./tools/build_linux_package.sh 0.1.11 linux-arm64 artifacts/packages
 ```
 
 Те же процессы автоматизированы workflows **macOS Packages**, **Linux Packages**

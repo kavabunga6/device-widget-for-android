@@ -273,6 +273,11 @@ public sealed partial class MainWindow : Window
     private void PhoneShell_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
         var point = e.GetCurrentPoint(this);
+        if (_miniMode && point.Properties.IsLeftButtonPressed)
+        {
+            MiniContent_PointerPressed(MiniContent, e);
+            return;
+        }
         if (point.Properties.IsLeftButtonPressed)
         {
             BeginMoveDrag(e);
@@ -366,21 +371,11 @@ public sealed partial class MainWindow : Window
     {
         if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
             return;
-        if (e.ClickCount >= 2)
-        {
-            _miniPointerDown = false;
-            _miniPointerDragged = false;
-            e.Pointer.Capture(null);
-            SetMiniMode(false);
-        }
-        else
-        {
-            _miniPointerDown = true;
-            _miniPointerDragged = false;
-            _miniPointerStart = VisualExtensions.PointToScreen(this, e.GetPosition(this));
-            _miniWindowStart = Position;
-            e.Pointer.Capture(MiniContent);
-        }
+        _miniPointerDown = true;
+        _miniPointerDragged = false;
+        _miniPointerStart = VisualExtensions.PointToScreen(this, e.GetPosition(this));
+        _miniWindowStart = Position;
+        e.Pointer.Capture(MiniContent);
         e.Handled = true;
     }
 
