@@ -20,6 +20,7 @@ public sealed partial class MainWindow : Window
     private const double PhoneWindowHeight = 392;
     private const double DrawerWidth = 326;
     private const double NotificationWidth = 352;
+    private const int MiniDragThreshold = 4;
     private readonly DesktopRuntime _runtime;
     private readonly PortableAdbService _adb;
     private readonly DesktopSettingsStore _settings;
@@ -35,6 +36,8 @@ public sealed partial class MainWindow : Window
     private bool _miniMode;
     private bool _showLockOverlay;
     private bool _miniPointerDown;
+    private bool _miniPointerDragged;
+    private bool _restoringWindowState;
     private PixelPoint _miniPointerStart;
     private PixelPoint _miniWindowStart;
     private PixelPoint? _miniReturnPosition;
@@ -70,6 +73,7 @@ public sealed partial class MainWindow : Window
         {
             ApplySelectedDevice();
         };
+        Closing += (_, _) => PersistWindowState();
         Closed += (_, _) =>
         {
             _adbOperation?.Cancel();
@@ -125,6 +129,38 @@ public sealed partial class MainWindow : Window
         Position = new PixelPoint(
             Math.Max(screen.WorkingArea.X, screen.WorkingArea.Right - width - offset),
             Math.Max(screen.WorkingArea.Y, screen.WorkingArea.Bottom - height - offset));
+    }
+
+    internal bool RestoreSavedWindowState()
+    {
+        var state = _settings.GetDeviceWindowState(_boundSerial);
+        if (state is null)
+            return false;
+
+        WindowStartupLocation = WindowStartupLocation.Manual;
+        _restoringWindowState = true;
+        try
+        {
+            SetMiniMode(state.IsMini);
+            var fallbackWidth = state.IsMini ? 120 : PhoneWindowWidth;
+            var fallbackHeight = state.IsMini ? 188 : PhoneWindowHeight;
+            var width = ValidWindowDimension(state.Width, fallbackWidth);
+            var height = ValidWindowDimension(state.Height, fallbackHeight);
+            SetWindowSize(width, height);
+            var restoredPosition = ClampToWorkingArea(new PixelPoint(state.Left, state.Top), width, height);
+            Position = restoredPosition;
+            _miniReturnPosition = state.MiniLeft is int miniLeft && state.MiniTop is int miniTop
+                ? ClampToWorkingArea(new PixelPoint(miniLeft, miniTop), 120, 188)
+                : state.IsMini
+                    ? restoredPosition
+                    : null;
+            RenderNotifications();
+        }
+        finally
+        {
+            _restoringWindowState = false;
+        }
+        return true;
     }
 
     private void ApplyDevice(AdbDeviceChoice? device)
@@ -195,8 +231,6 @@ public sealed partial class MainWindow : Window
 
     private void ToggleDrawer(bool? open = null)
     {
-        if (_miniMode)
-            return;
         var shouldOpen = open ?? !_drawerOpen;
         if (shouldOpen == _drawerOpen)
             return;
@@ -249,7 +283,10 @@ public sealed partial class MainWindow : Window
     {
         Activate();
         if (_miniMode)
+        {
+            ToggleDrawer(false);
             MiniContent.ContextMenu?.Open(MiniContent);
+        }
         else
             ToggleDrawer(true);
         e.Handled = true;
@@ -331,12 +368,14 @@ public sealed partial class MainWindow : Window
         if (e.ClickCount >= 2)
         {
             _miniPointerDown = false;
+            _miniPointerDragged = false;
             e.Pointer.Capture(null);
             SetMiniMode(false);
         }
         else
         {
             _miniPointerDown = true;
+            _miniPointerDragged = false;
             _miniPointerStart = VisualExtensions.PointToScreen(this, e.GetPosition(this));
             _miniWindowStart = Position;
             e.Pointer.Capture(MiniContent);
@@ -349,9 +388,14 @@ public sealed partial class MainWindow : Window
         if (!_miniPointerDown || !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
             return;
         var current = VisualExtensions.PointToScreen(this, e.GetPosition(this));
+        var deltaX = current.X - _miniPointerStart.X;
+        var deltaY = current.Y - _miniPointerStart.Y;
+        if (!_miniPointerDragged && Math.Abs(deltaX) < MiniDragThreshold && Math.Abs(deltaY) < MiniDragThreshold)
+            return;
+        _miniPointerDragged = true;
         Position = new PixelPoint(
-            _miniWindowStart.X + current.X - _miniPointerStart.X,
-            _miniWindowStart.Y + current.Y - _miniPointerStart.Y);
+            _miniWindowStart.X + deltaX,
+            _miniWindowStart.Y + deltaY);
         e.Handled = true;
     }
 
@@ -359,8 +403,16 @@ public sealed partial class MainWindow : Window
     {
         if (!_miniPointerDown)
             return;
+        var openActions = !_miniPointerDragged && _miniMode;
         _miniPointerDown = false;
+        _miniPointerDragged = false;
         e.Pointer.Capture(null);
+        PersistWindowState();
+        if (openActions)
+        {
+            Activate();
+            ToggleDrawer(true);
+        }
         e.Handled = true;
     }
 
@@ -369,10 +421,7 @@ public sealed partial class MainWindow : Window
     private void RestoreFromMiniMenu_Click(object? sender, RoutedEventArgs e) => SetMiniMode(false);
 
     private void OpenActionsFromMiniMenu_Click(object? sender, RoutedEventArgs e)
-    {
-        SetMiniMode(false);
-        ToggleDrawer(true);
-    }
+        => ToggleDrawer(true);
 
     private void SetMiniMode(bool mini)
     {
@@ -407,6 +456,7 @@ public sealed partial class MainWindow : Window
             mini ? 120 : PhoneWindowWidth,
             mini ? 188 : PhoneWindowHeight);
         RenderNotifications();
+        Dispatcher.UIThread.Post(PersistWindowState, DispatcherPriority.Background);
     }
 
     private void UpdateLockOverlays()
@@ -426,6 +476,28 @@ public sealed partial class MainWindow : Window
         MinWidth = Math.Max(96, width * 0.7);
         MinHeight = Math.Max(150, height * 0.7);
     }
+
+    private void PersistWindowState()
+    {
+        if (_restoringWindowState || string.Equals(_boundSerial, "design", StringComparison.Ordinal))
+            return;
+        var fallbackWidth = _miniMode ? 120 : PhoneWindowWidth;
+        var fallbackHeight = _miniMode ? 188 : PhoneWindowHeight;
+        var width = ValidWindowDimension(Bounds.Width, fallbackWidth);
+        var height = ValidWindowDimension(Bounds.Height, fallbackHeight);
+        var miniPosition = _miniMode ? Position : _miniReturnPosition;
+        _settings.SaveDeviceWindowState(_boundSerial, new DesktopDeviceWindowState(
+            Position.X,
+            Position.Y,
+            width,
+            height,
+            _miniMode,
+            miniPosition?.X,
+            miniPosition?.Y));
+    }
+
+    private static double ValidWindowDimension(double value, double fallback) =>
+        double.IsFinite(value) && value is >= 80 and <= 4096 ? value : fallback;
 
     private (PixelPoint Position, bool OpensLeft) GetExpansionPlacement(double targetWidth, double targetHeight)
     {
@@ -526,6 +598,7 @@ public sealed partial class MainWindow : Window
     private void CloseButton_Click(object? sender, RoutedEventArgs e)
     {
         CloseTransientPopups();
+        PersistWindowState();
         HideRequested?.Invoke(this, EventArgs.Empty);
         Hide();
     }

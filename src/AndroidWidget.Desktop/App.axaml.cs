@@ -63,8 +63,10 @@ public sealed partial class App : Application
             window.HideRequested += (_, _) => window.Hide();
             window.Closed += (_, _) => _windows.Remove(device.Serial);
             _windows.Add(device.Serial, window);
+            var restored = window.RestoreSavedWindowState();
             window.Show();
-            window.PlaceInSlot(_windows.Count - 1);
+            if (!restored)
+                window.PlaceInSlot(_windows.Count - 1);
         }
 
         if (_trayIcon is not null)

@@ -14,7 +14,8 @@ internal sealed record DesktopSettings(
     bool AutoImportPhotos,
     string PhotoImportFolder,
     bool ShowScreenRecordingGuide,
-    bool Topmost)
+    bool Topmost,
+    Dictionary<string, DesktopDeviceWindowState>? DeviceWindows = null)
 {
     public static DesktopSettings Default => new(
         "Dark",
@@ -39,6 +40,15 @@ internal sealed record DesktopSettings(
     }
 }
 
+internal sealed record DesktopDeviceWindowState(
+    int Left,
+    int Top,
+    double Width,
+    double Height,
+    bool IsMini,
+    int? MiniLeft = null,
+    int? MiniTop = null);
+
 internal sealed class DesktopSettingsStore
 {
     private readonly string _path;
@@ -57,6 +67,31 @@ internal sealed class DesktopSettingsStore
     public void Update(Func<DesktopSettings, DesktopSettings> update)
     {
         Current = update(Current);
+        Persist();
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
+    public DesktopDeviceWindowState? GetDeviceWindowState(string serial)
+    {
+        if (Current.DeviceWindows is null)
+            return null;
+        return Current.DeviceWindows.GetValueOrDefault(serial);
+    }
+
+    public void SaveDeviceWindowState(string serial, DesktopDeviceWindowState state)
+    {
+        var states = Current.DeviceWindows is null
+            ? new Dictionary<string, DesktopDeviceWindowState>(StringComparer.Ordinal)
+            : new Dictionary<string, DesktopDeviceWindowState>(Current.DeviceWindows, StringComparer.Ordinal);
+        if (states.TryGetValue(serial, out var existing) && existing == state)
+            return;
+        states[serial] = state;
+        Current = Current with { DeviceWindows = states };
+        Persist();
+    }
+
+    private void Persist()
+    {
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
@@ -69,7 +104,6 @@ internal sealed class DesktopSettingsStore
         {
             // Settings still apply for the current session if persistence is unavailable.
         }
-        Changed?.Invoke(this, EventArgs.Empty);
     }
 
     public bool SetAutoStart(bool enabled, out string? error)
