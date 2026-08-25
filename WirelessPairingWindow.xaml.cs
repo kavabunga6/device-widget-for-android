@@ -18,6 +18,8 @@ public partial class WirelessPairingWindow : Window
         {
             _qrSession?.Cancel();
             _lifetime.Cancel();
+            _qrSession?.Dispose();
+            _lifetime.Dispose();
         };
     }
 

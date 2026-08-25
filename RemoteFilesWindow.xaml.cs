@@ -29,7 +29,11 @@ public partial class RemoteFilesWindow : Window
         _transfers = transfers;
         _device = device;
         DeviceText.Text = $"{device.DisplayName}  ·  {device.ConnectionLabel}";
-        Closed += (_, _) => _lifetime.Cancel();
+        Closed += (_, _) =>
+        {
+            _lifetime.Cancel();
+            _lifetime.Dispose();
+        };
     }
 
     private async void Window_Loaded(object sender, RoutedEventArgs e) => await NavigateAsync(_currentPath);

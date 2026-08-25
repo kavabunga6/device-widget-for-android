@@ -980,11 +980,11 @@ public sealed partial class MainWindow : Window
         try
         {
             if (OperatingSystem.IsMacOS())
-                Process.Start("open", ["-R", path]);
+                Process.Start("open", ["-R", path])?.Dispose();
             else if (OperatingSystem.IsWindows())
-                Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\"") { UseShellExecute = true });
+                Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\"") { UseShellExecute = true })?.Dispose();
             else
-                Process.Start(new ProcessStartInfo("xdg-open", Path.GetDirectoryName(path)!) { UseShellExecute = false });
+                Process.Start(new ProcessStartInfo("xdg-open", Path.GetDirectoryName(path)!) { UseShellExecute = false })?.Dispose();
         }
         catch
         {

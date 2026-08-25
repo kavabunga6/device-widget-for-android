@@ -119,6 +119,7 @@ public partial class MainWindow : Window
         _transfers.Changed -= TransfersChanged;
         _photoImport.PhotoDetected -= PhotoDetected;
         _lifetime.Cancel();
+        _lifetime.Dispose();
         _companionCoordinator.LinkChanged -= CompanionLinkChanged;
         _companionCoordinator.MessageReceived -= CompanionMessageReceived;
         SaveSettings();

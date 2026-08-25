@@ -90,7 +90,7 @@ public sealed class WindowsDesktopIntegration : IDesktopIntegration
         {
             var fullPath = Path.GetFullPath(path);
             Directory.CreateDirectory(fullPath);
-            Process.Start(new ProcessStartInfo(fullPath) { UseShellExecute = true });
+            using var process = Process.Start(new ProcessStartInfo(fullPath) { UseShellExecute = true });
             return OperationResult.Success();
         }
         catch (Exception ex)
@@ -113,7 +113,7 @@ public sealed class WindowsDesktopIntegration : IDesktopIntegration
 
             // Opening the resolved directory is more reliable than Explorer's
             // /select syntax, whose parsing changes when a path contains spaces.
-            Process.Start(new ProcessStartInfo(directory) { UseShellExecute = true });
+            using var process = Process.Start(new ProcessStartInfo(directory) { UseShellExecute = true });
             return OperationResult.Success();
         }
         catch (Exception ex)
@@ -126,7 +126,7 @@ public sealed class WindowsDesktopIntegration : IDesktopIntegration
     {
         try
         {
-            Process.Start(new ProcessStartInfo(uri) { UseShellExecute = true });
+            using var process = Process.Start(new ProcessStartInfo(uri) { UseShellExecute = true });
             return OperationResult.Success();
         }
         catch (Exception ex)

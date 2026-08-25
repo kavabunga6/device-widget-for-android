@@ -26,7 +26,8 @@ internal static class DesktopFileLauncher
             info.ArgumentList.Add(fullPath);
         }
 
-        if (Process.Start(info) is null)
+        using var process = Process.Start(info);
+        if (process is null)
             throw new InvalidOperationException("Системное приложение для этого типа файла не найдено.");
     }
 }

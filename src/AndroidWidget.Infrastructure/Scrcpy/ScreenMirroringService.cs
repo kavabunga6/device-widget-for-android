@@ -120,6 +120,8 @@ public sealed class ScreenMirroringService
 
             if (recordingPath is not null)
                 TrackRecording(serial, process, recordingPath);
+            else
+                process.Dispose();
             return OperationResult.Success(recordingPath ?? string.Empty);
         }
         catch (Exception ex)

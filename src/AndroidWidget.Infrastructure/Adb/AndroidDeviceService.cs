@@ -171,7 +171,7 @@ public sealed class AndroidDeviceService : IAndroidDeviceService
                 UseShellExecute = true,
                 Arguments = $"/d /k \"\"{adbPath}\" -s {serial} shell\""
             };
-            Process.Start(info);
+            using var process = Process.Start(info);
             return OperationResult.Success();
         }
         catch (Exception ex)

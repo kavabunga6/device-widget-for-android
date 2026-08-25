@@ -144,7 +144,7 @@ public partial class SettingsWindow : Window
 
         try
         {
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path)
+            using var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path)
             {
                 UseShellExecute = true
             });

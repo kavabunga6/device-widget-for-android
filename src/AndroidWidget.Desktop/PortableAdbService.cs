@@ -178,7 +178,7 @@ internal sealed class PortableAdbService
                 info.ArgumentList.Add(serial);
                 info.ArgumentList.Add("shell");
             }
-            Process.Start(info);
+            using var process = Process.Start(info);
             return new PortableCommandResult(0, "ADB shell открыт", "");
         }
         catch (Exception ex)
@@ -226,6 +226,8 @@ internal sealed class PortableAdbService
             }
 
             var process = Process.Start(info);
+            if (recordingPath is null)
+                process?.Dispose();
             if (recordingPath is not null && process is not null)
             {
                 var fullPath = Path.GetFullPath(recordingPath);
