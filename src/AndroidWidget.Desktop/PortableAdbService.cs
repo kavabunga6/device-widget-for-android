@@ -200,6 +200,7 @@ internal sealed class PortableAdbService
                 CreateNoWindow = true,
                 WorkingDirectory = Path.GetDirectoryName(Path.GetFullPath(_tools.Scrcpy))
             };
+            info.Environment["ADB"] = _tools.Adb;
             info.ArgumentList.Add("--serial");
             info.ArgumentList.Add(serial);
             foreach (var argument in PresetArguments(preset))

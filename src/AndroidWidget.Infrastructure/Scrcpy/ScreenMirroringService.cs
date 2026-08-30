@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using AndroidWidget.Infrastructure.Adb;
 using AndroidWidget.Core.Devices;
 using AndroidWidget.Core.Operations;
 
@@ -7,10 +8,15 @@ namespace AndroidWidget.Infrastructure.Scrcpy;
 public sealed class ScreenMirroringService
 {
     private readonly ScrcpyBundleManager _bundleManager;
+    private readonly AdbExecutableProvider _adb;
     private readonly object _recordingGate = new();
     private readonly Dictionary<string, ActiveRecording> _recordings = new(StringComparer.Ordinal);
 
-    public ScreenMirroringService(ScrcpyBundleManager bundleManager) => _bundleManager = bundleManager;
+    public ScreenMirroringService(ScrcpyBundleManager bundleManager, AdbExecutableProvider adb)
+    {
+        _bundleManager = bundleManager;
+        _adb = adb;
+    }
 
     public OperationResult Start(string serial, ScrcpyPreset preset) => StartProcess(serial, preset, null);
 
@@ -107,6 +113,7 @@ public sealed class ScreenMirroringService
                 CreateNoWindow = true,
                 WorkingDirectory = Path.GetDirectoryName(bundled)!
             };
+            info.Environment["ADB"] = _adb.GetPath();
             info.ArgumentList.Add("--serial");
             info.ArgumentList.Add(serial);
             info.ArgumentList.Add("--window-title");

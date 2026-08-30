@@ -1,3 +1,4 @@
+using AndroidWidget.Core.Tools;
 using AndroidWidget.Infrastructure.Scrcpy;
 
 namespace AndroidWidget.Infrastructure.Adb;
@@ -11,6 +12,10 @@ public sealed class AdbExecutableProvider
 
     public string GetPath()
     {
+        var systemAdb = SystemAdbResolver.Find();
+        if (systemAdb is not null)
+            return _cachedPath = systemAdb;
+
         if (!string.IsNullOrWhiteSpace(_cachedPath) &&
             (!Path.IsPathRooted(_cachedPath) || File.Exists(_cachedPath)))
             return _cachedPath;

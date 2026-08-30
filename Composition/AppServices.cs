@@ -54,7 +54,7 @@ public sealed class AppServices
         var companion = new CompanionService(commands);
         var messages = new SmsNotificationReader(commands);
         var snapshots = new DeviceSnapshotReader(commands, messages, companion);
-        var mirroring = new ScreenMirroringService(bundle);
+        var mirroring = new ScreenMirroringService(bundle, executable);
         var devices = new AndroidDeviceService(commands, snapshots, mirroring, settings);
         var companionDataDirectory = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),

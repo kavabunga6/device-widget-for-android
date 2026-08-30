@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using AndroidWidget.Core.Tools;
 
 namespace AndroidWidget.Desktop;
 
@@ -9,7 +10,7 @@ internal sealed class DesktopToolResolver
     private const string LicenseResource = "AndroidWidget.Desktop.Bundled.scrcpy-LICENSE.txt";
     private readonly Lazy<ToolPaths> _paths = new(Resolve);
 
-    public string Adb => _paths.Value.Adb;
+    public string Adb => SystemAdbResolver.Find() ?? _paths.Value.Adb;
     public string Scrcpy => _paths.Value.Scrcpy;
 
     private static ToolPaths Resolve()
