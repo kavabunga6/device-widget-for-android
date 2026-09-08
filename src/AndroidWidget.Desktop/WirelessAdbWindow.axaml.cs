@@ -3,6 +3,9 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
+using QRCoder;
+using System.Security.Cryptography;
 
 namespace AndroidWidget.Desktop;
 
@@ -10,6 +13,8 @@ internal sealed partial class WirelessAdbWindow : Window
 {
     private readonly DesktopRuntime _runtime;
     private readonly CancellationTokenSource _lifetime = new();
+    private CancellationTokenSource? _qrSession;
+    private Bitmap? _qrBitmap;
     private bool _busy;
 
     public WirelessAdbWindow(DesktopRuntime runtime)
@@ -21,12 +26,71 @@ internal sealed partial class WirelessAdbWindow : Window
         Closed += Window_Closed;
     }
 
-    private void Window_Opened(object? sender, EventArgs e) => PairEndpointText.Focus();
+    private async void Window_Opened(object? sender, EventArgs e) => await StartQrPairingAsync();
 
     private void Window_Closed(object? sender, EventArgs e)
     {
         _lifetime.Cancel();
+        _qrSession?.Cancel();
+        _qrSession?.Dispose();
+        _qrBitmap?.Dispose();
         _lifetime.Dispose();
+    }
+
+    private async void NewQrButton_Click(object? sender, RoutedEventArgs e) => await StartQrPairingAsync();
+
+    private async Task StartQrPairingAsync()
+    {
+        _qrSession?.Cancel();
+        _qrSession?.Dispose();
+        var session = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
+        _qrSession = session;
+        var serviceName = $"studio-{RandomText(10)}";
+        var password = RandomText(16);
+        var payload = $"WIFI:T:ADB;S:{serviceName};P:{password};;";
+
+        var png = PngByteQRCodeHelper.GetQRCode(payload, QRCodeGenerator.ECCLevel.Q, 12);
+        using var stream = new MemoryStream(png, writable: false);
+        var bitmap = new Bitmap(stream);
+        var previous = _qrBitmap;
+        _qrBitmap = bitmap;
+        QrImage.Source = bitmap;
+        previous?.Dispose();
+
+        try
+        {
+            SetBusy(true, "Откройте на телефоне сканер QR — ожидаю сопряжение…");
+            NewQrButton.IsEnabled = true;
+            var result = await _runtime.Adb.PairQrAsync(serviceName, password, session.Token);
+            if (!ReferenceEquals(_qrSession, session))
+                return;
+            if (result.IsSuccess)
+                await _runtime.RefreshAsync();
+            SetStatus(result.IsSuccess ? $"{result.Message} ✓" : result.Message, !result.IsSuccess);
+        }
+        catch (OperationCanceledException) when (session.IsCancellationRequested)
+        {
+        }
+        catch (Exception ex)
+        {
+            if (ReferenceEquals(_qrSession, session))
+                SetStatus(ex.Message, true);
+        }
+        finally
+        {
+            if (ReferenceEquals(_qrSession, session))
+                SetBusy(false);
+        }
+    }
+
+    private static string RandomText(int length)
+    {
+        const string alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+        return string.Create(length, alphabet, static (span, chars) =>
+        {
+            for (var index = 0; index < span.Length; index++)
+                span[index] = chars[RandomNumberGenerator.GetInt32(chars.Length)];
+        });
     }
 
     private void TitleBar_PointerPressed(object? sender, PointerPressedEventArgs e)
@@ -108,6 +172,7 @@ internal sealed partial class WirelessAdbWindow : Window
     private void SetBusy(bool busy, string? status = null)
     {
         _busy = busy;
+        NewQrButton.IsEnabled = !busy;
         PairButton.IsEnabled = !busy;
         ConnectButton.IsEnabled = !busy;
         PairEndpointText.IsEnabled = !busy;

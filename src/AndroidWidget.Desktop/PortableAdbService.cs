@@ -54,6 +54,74 @@ internal sealed class PortableAdbService
 
     public Task<PortableCommandResult> ConnectAsync(string endpoint, CancellationToken token) =>
         RunAsync(_tools.Adb, ["connect", endpoint], token, TimeSpan.FromSeconds(30));
+    public async Task<PortableCommandResult> PairQrAsync(string serviceName, string password,
+        CancellationToken token)
+    {
+        if (!Regex.IsMatch(serviceName, "^[a-zA-Z0-9._-]{1,80}$") ||
+            !Regex.IsMatch(password, "^[a-zA-Z0-9]{8,64}$"))
+            return new PortableCommandResult(1, "", "Некорректные данные QR-сопряжения.");
+
+        var deadline = DateTimeOffset.UtcNow.AddMinutes(2);
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            token.ThrowIfCancellationRequested();
+            var services = await RunAsync(_tools.Adb, ["mdns", "services"], token, TimeSpan.FromSeconds(8));
+            if (services.IsSuccess && TryFindMdnsEndpoint(services.Output, serviceName,
+                    "_adb-tls-pairing._tcp", null, out var pairingEndpoint))
+            {
+                var paired = await PairAsync(pairingEndpoint, password, token);
+                if (!paired.IsSuccess)
+                    return paired;
+
+                var host = EndpointHost(pairingEndpoint);
+                var connectDeadline = DateTimeOffset.UtcNow.AddSeconds(30);
+                while (DateTimeOffset.UtcNow < connectDeadline)
+                {
+                    token.ThrowIfCancellationRequested();
+                    services = await RunAsync(_tools.Adb, ["mdns", "services"], token,
+                        TimeSpan.FromSeconds(8));
+                    if (services.IsSuccess && TryFindMdnsEndpoint(services.Output, null,
+                            "_adb-tls-connect._tcp", host, out var connectEndpoint))
+                    {
+                        var connected = await ConnectAsync(connectEndpoint, token);
+                        if (connected.IsSuccess)
+                            return new PortableCommandResult(0, "Устройство сопряжено и подключено.", "");
+                    }
+                    await Task.Delay(700, token);
+                }
+                return new PortableCommandResult(0,
+                    "Устройство сопряжено. Android завершит подключение автоматически.", "");
+            }
+            await Task.Delay(700, token);
+        }
+        return new PortableCommandResult(1, "",
+            "Телефон не обнаружен. Откройте сканер QR в разделе «Беспроводная отладка» и попробуйте снова.");
+    }
+
+    private static bool TryFindMdnsEndpoint(string output, string? serviceName, string serviceType,
+        string? host, out string endpoint)
+    {
+        foreach (var line in output.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = Regex.Split(line.Trim(), "\\s+");
+            if (parts.Length < 3 || parts[1] != serviceType ||
+                (serviceName is not null && parts[0] != serviceName) || !IsValidEndpoint(parts[2]) ||
+                (host is not null && !string.Equals(EndpointHost(parts[2]), host,
+                    StringComparison.OrdinalIgnoreCase)))
+                continue;
+            endpoint = parts[2];
+            return true;
+        }
+        endpoint = string.Empty;
+        return false;
+    }
+
+    private static bool IsValidEndpoint(string endpoint) =>
+        Uri.TryCreate($"tcp://{endpoint}", UriKind.Absolute, out var uri) &&
+        uri.Port is > 0 and <= 65535 && !string.IsNullOrWhiteSpace(uri.Host);
+
+    private static string EndpointHost(string endpoint) =>
+        Uri.TryCreate($"tcp://{endpoint}", UriKind.Absolute, out var uri) ? uri.Host : string.Empty;
 
     public Task<PortableCommandResult> RunDeviceAsync(string serial, IEnumerable<string> arguments,
         CancellationToken token, TimeSpan? timeout = null) =>

@@ -1,7 +1,7 @@
 <Window x:Class="AndroidWidget.Desktop.WirelessAdbWindow"
         xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Wi-Fi ADB" Icon="/Assets/AppIcon.png"
-        Width="540" Height="560" CanResize="False" WindowStartupLocation="CenterOwner"
+        Width="580" Height="760" CanResize="False" WindowStartupLocation="CenterOwner"
         Background="Transparent" TransparencyLevelHint="Transparent" WindowDecorations="None">
   <Window.Styles>
     <Style Selector="Border.card">
@@ -51,17 +51,35 @@
         </Button>
       </Grid>
 
-      <Grid Grid.Row="1" Margin="22,14,22,22" RowDefinitions="Auto,Auto,Auto,*,Auto">
+      <Grid Grid.Row="1" Margin="22,14,22,22" RowDefinitions="Auto,Auto,Auto,Auto,*,Auto">
         <StackPanel>
           <TextBlock Text="Беспроводная отладка" FontSize="23" FontWeight="SemiBold"
                      Foreground="{DynamicResource Primary}" />
           <TextBlock Margin="0,5,0,0" Foreground="{DynamicResource Secondary}" TextWrapping="Wrap"
-                     Text="На телефоне откройте Для разработчиков → Беспроводная отладка → Сопряжение с помощью кода." />
+                     Text="На телефоне откройте Для разработчиков → Беспроводная отладка → Сопряжение устройства с помощью QR-кода." />
         </StackPanel>
 
         <Border Grid.Row="1" Classes="card" Margin="0,18,0,0">
+          <Grid ColumnDefinitions="210,*">
+            <Border Width="194" Height="194" Padding="7" CornerRadius="12" Background="White"
+                    HorizontalAlignment="Left">
+              <Image x:Name="QrImage" Width="180" Height="180" Stretch="Uniform" />
+            </Border>
+            <StackPanel Grid.Column="1" Margin="18,4,0,0" VerticalAlignment="Center">
+              <TextBlock Text="Сканируйте — и готово" FontSize="17" FontWeight="SemiBold"
+                         Foreground="{DynamicResource Primary}" />
+              <TextBlock Margin="0,9,0,0" FontSize="11" Foreground="{DynamicResource Secondary}"
+                         TextWrapping="Wrap"
+                         Text="Адрес, порт и защищённый код уже находятся внутри QR. После сканирования приложение само выполнит сопряжение и подключит телефон." />
+              <Button x:Name="NewQrButton" Classes="action" Margin="0,16,0,0"
+                      HorizontalAlignment="Left" Content="Новый QR-код" Click="NewQrButton_Click" />
+            </StackPanel>
+          </Grid>
+        </Border>
+
+        <Border Grid.Row="2" Classes="card" Margin="0,12,0,0">
           <StackPanel>
-            <TextBlock Text="1 · Сопряжение" FontWeight="SemiBold" Foreground="{DynamicResource Primary}" />
+            <TextBlock Text="Ручное сопряжение · запасной вариант" FontWeight="SemiBold" Foreground="{DynamicResource Primary}" />
             <TextBlock Margin="0,5,0,0" FontSize="10" Foreground="{DynamicResource Secondary}"
                        Text="Введите адрес сопряжения и шестизначный код с телефона." />
             <Grid Margin="0,12,0,0" ColumnDefinitions="*,112,Auto">
@@ -74,9 +92,9 @@
           </StackPanel>
         </Border>
 
-        <Border Grid.Row="2" Classes="card" Margin="0,12,0,0">
+        <Border Grid.Row="3" Classes="card" Margin="0,12,0,0">
           <StackPanel>
-            <TextBlock Text="2 · Подключение" FontWeight="SemiBold" Foreground="{DynamicResource Primary}" />
+            <TextBlock Text="Ручное подключение" FontWeight="SemiBold" Foreground="{DynamicResource Primary}" />
             <TextBlock Margin="0,5,0,0" FontSize="10" Foreground="{DynamicResource Secondary}"
                        TextWrapping="Wrap"
                        Text="Вернитесь на основной экран беспроводной отладки: порт подключения обычно отличается от порта сопряжения." />
@@ -88,10 +106,10 @@
           </StackPanel>
         </Border>
 
-        <TextBlock x:Name="StatusText" Grid.Row="3" Margin="2,14,2,0" FontSize="10.5"
+        <TextBlock x:Name="StatusText" Grid.Row="4" Margin="2,14,2,0" FontSize="10.5"
                    Foreground="{DynamicResource Secondary}" TextWrapping="Wrap" />
 
-        <Button Grid.Row="4" Classes="action" Content="Готово" Width="104"
+        <Button Grid.Row="5" Classes="action" Content="Готово" Width="104"
                 HorizontalAlignment="Right" Margin="0,14,0,0" Click="CloseButton_Click" />
       </Grid>
     </Grid>
