@@ -14,6 +14,7 @@ public sealed partial class App : Application
     private readonly Dictionary<string, MainWindow> _windows = new(StringComparer.Ordinal);
     private DesktopRuntime? _runtime;
     private TrayIcon? _trayIcon;
+    private WirelessAdbWindow? _wirelessAdbWindow;
     private IClassicDesktopStyleApplicationLifetime? _desktop;
     private bool _exitRequested;
 
@@ -81,6 +82,7 @@ public sealed partial class App : Application
     {
         var menu = new NativeMenu();
         menu.Items.Add(CreateMenuItem("Показать виджеты", (_, _) => ShowWidgets()));
+        menu.Items.Add(CreateMenuItem("Подключить по Wi-Fi ADB", (_, _) => ShowWirelessAdb()));
         menu.Items.Add(CreateMenuItem("Обновить устройства", async (_, _) =>
         {
             if (_runtime is not null)
@@ -110,11 +112,39 @@ public sealed partial class App : Application
 
     private void ShowWidgets()
     {
+        if (_windows.Count == 0)
+        {
+            ShowWirelessAdb();
+            return;
+        }
+
         foreach (var window in _windows.Values)
         {
             window.Show();
             window.Activate();
         }
+    }
+
+    private void ShowWirelessAdb()
+    {
+        if (_runtime is null)
+            return;
+        if (_wirelessAdbWindow is not null)
+        {
+            _wirelessAdbWindow.Show();
+            _wirelessAdbWindow.Activate();
+            return;
+        }
+
+        var window = new WirelessAdbWindow(_runtime);
+        _wirelessAdbWindow = window;
+        window.Closed += (_, _) =>
+        {
+            if (ReferenceEquals(_wirelessAdbWindow, window))
+                _wirelessAdbWindow = null;
+        };
+        window.Show();
+        window.Activate();
     }
 
     private void ShowSettings()
@@ -142,6 +172,8 @@ public sealed partial class App : Application
         try
         {
             DisposeTrayIcon();
+            _wirelessAdbWindow?.Close();
+            _wirelessAdbWindow = null;
             foreach (var window in _windows.Values.ToList())
                 window.CloseForExit();
             _windows.Clear();
