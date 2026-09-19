@@ -8,6 +8,7 @@ using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using Avalonia.Styling;
 using Avalonia.Threading;
@@ -784,6 +785,50 @@ public sealed partial class MainWindow : Window
         });
     }
 
+    private async void ScreenshotClipboardButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (SelectedAdbDevice() is not { } device)
+            return;
+        var clipboard = GetTopLevel(this)?.Clipboard;
+        if (clipboard is null)
+        {
+            SetStatus("Системный буфер обмена недоступен", true);
+            return;
+        }
+
+        _adbOperation?.Cancel();
+        _adbOperation?.Dispose();
+        _adbOperation = new CancellationTokenSource();
+        try
+        {
+            SetStatus("Создаю скриншот…");
+            var result = await _adb.ScreenshotBytesAsync(device.Serial, _adbOperation.Token);
+            if (!result.Command.IsSuccess)
+            {
+                SetStatus(result.Command.Message, true);
+                return;
+            }
+            if (result.Data.Length == 0)
+            {
+                SetStatus("Телефон вернул пустой скриншот", true);
+                return;
+            }
+
+            using var stream = new MemoryStream(result.Data, writable: false);
+            using var bitmap = new Bitmap(stream);
+            await clipboard.SetBitmapAsync(bitmap);
+            await clipboard.FlushAsync();
+            SetStatus("Скриншот скопирован в буфер обмена ✓");
+        }
+        catch (OperationCanceledException)
+        {
+            SetStatus("Операция отменена");
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"Не удалось скопировать скриншот: {ex.Message}", true);
+        }
+    }
     private async void InstallButton_Click(object? sender, RoutedEventArgs e)
     {
         if (SelectedAdbDevice() is not { } device)

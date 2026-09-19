@@ -14,6 +14,7 @@ internal sealed record PortableCommandResult(int ExitCode, string Output, string
     public bool IsSuccess => ExitCode == 0;
     public string Message => string.IsNullOrWhiteSpace(Error) ? Output.Trim() : Error.Trim();
 }
+internal sealed record PortableBinaryResult(PortableCommandResult Command, byte[] Data);
 internal sealed record PortableRemoteEntry(string Name, string Path, bool IsDirectory)
 {
     public override string ToString() => IsDirectory ? $"📁 {Name}" : $"📄 {Name}";
@@ -129,6 +130,10 @@ internal sealed class PortableAdbService
 
     public Task<PortableCommandResult> ScreenshotAsync(string serial, string outputPath, CancellationToken token) =>
         RunBinaryAsync(_tools.Adb, ["-s", serial, "exec-out", "screencap", "-p"], outputPath, token,
+            TimeSpan.FromSeconds(30));
+
+    public Task<PortableBinaryResult> ScreenshotBytesAsync(string serial, CancellationToken token) =>
+        RunBinaryToBytesAsync(_tools.Adb, ["-s", serial, "exec-out", "screencap", "-p"], token,
             TimeSpan.FromSeconds(30));
 
     public async Task<IReadOnlyList<PortableRemoteEntry>> ListDirectoryAsync(string serial, string path,
@@ -520,6 +525,39 @@ internal sealed class PortableAdbService
         return new PortableCommandResult(process.ExitCode, outputPath, await error);
     }
 
+    private static async Task<PortableBinaryResult> RunBinaryToBytesAsync(string executable,
+        IEnumerable<string> arguments, CancellationToken cancellationToken, TimeSpan timeout)
+    {
+        var info = CreateStartInfo(executable, arguments);
+        using var process = new Process { StartInfo = info };
+        try { process.Start(); }
+        catch (Exception ex)
+        {
+            return new PortableBinaryResult(new PortableCommandResult(1, "", ex.Message), []);
+        }
+
+        await using var output = new MemoryStream();
+        using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutSource.CancelAfter(timeout);
+        var copy = process.StandardOutput.BaseStream.CopyToAsync(output, timeoutSource.Token);
+        var error = process.StandardError.ReadToEndAsync(timeoutSource.Token);
+        try
+        {
+            await process.WaitForExitAsync(timeoutSource.Token);
+            await copy;
+        }
+        catch (OperationCanceledException)
+        {
+            TryKill(process);
+            try { await Task.WhenAll(copy, error); } catch (OperationCanceledException) { }
+            if (cancellationToken.IsCancellationRequested)
+                throw;
+            return new PortableBinaryResult(
+                new PortableCommandResult(-2, "", "Превышено время ожидания."), []);
+        }
+        return new PortableBinaryResult(
+            new PortableCommandResult(process.ExitCode, "", await error), output.ToArray());
+    }
     private static ProcessStartInfo CreateStartInfo(string executable, IEnumerable<string> arguments)
     {
         var info = new ProcessStartInfo(executable)
