@@ -43,6 +43,7 @@ public sealed partial class MainWindow : Window
     private PixelPoint _miniWindowStart;
     private PixelPoint? _miniReturnPosition;
     private AdbDeviceChoice? _activeDevice;
+    private NotificationHistoryWindow? _notificationHistoryWindow;
 
     internal event EventHandler? HideRequested;
 
@@ -84,6 +85,7 @@ public sealed partial class MainWindow : Window
             _runtime.Transfers.Changed -= Transfers_Changed;
             _runtime.PhotoDetected -= Runtime_PhotoDetected;
             _adb.RecordingEnded -= Adb_RecordingEnded;
+            _notificationHistoryWindow?.Close();
             ActionDrawerPopup.IsOpen = false;
             NotificationPopup.IsOpen = false;
             foreach (var timer in _notificationTimers.Values)
@@ -768,6 +770,28 @@ public sealed partial class MainWindow : Window
         window.Activate();
     }
 
+    private void NotificationsButton_Click(object? sender, RoutedEventArgs e)
+    {
+        CloseTransientPopups();
+        if (_notificationHistoryWindow is { } existing)
+        {
+            if (existing.WindowState == WindowState.Minimized)
+                existing.WindowState = WindowState.Normal;
+            existing.Activate();
+            return;
+        }
+        var window = new NotificationHistoryWindow(_runtime.Notifications, ClearWidgetNotificationBubbles)
+            { Topmost = Topmost };
+        _notificationHistoryWindow = window;
+        window.Closed += (_, _) =>
+        {
+            if (ReferenceEquals(_notificationHistoryWindow, window))
+                _notificationHistoryWindow = null;
+        };
+        window.Show(this);
+        window.Activate();
+    }
+
     private async void ScreenshotButton_Click(object? sender, RoutedEventArgs e)
     {
         if (SelectedAdbDevice() is not { } device)
@@ -939,14 +963,19 @@ public sealed partial class MainWindow : Window
         {
             if (!string.Equals(received.ClientTag, _boundSerial, StringComparison.Ordinal))
                 return;
-            ShowNotification($"{received.Notification.Title}: {received.Notification.Preview}".Trim(':', ' '));
+            ShowNotification($"{received.Notification.Title}: {received.Notification.Preview}".Trim(':', ' '),
+                isPhoneNotification: true);
         });
 
-    private void ShowNotification(string message, Action? action = null)
+    private void ShowNotification(string message, Action? action = null, bool isPhoneNotification = false)
     {
-        if (!_settings.Current.ShowNotifications || string.IsNullOrWhiteSpace(message))
+        if (string.IsNullOrWhiteSpace(message))
             return;
-        var bubble = new NotificationBubble(Guid.NewGuid(), message, action);
+        if (!isPhoneNotification)
+            _runtime.Notifications.Add(NotificationHistoryMessage(message));
+        if (!_settings.Current.ShowNotifications)
+            return;
+        var bubble = new NotificationBubble(Guid.NewGuid(), message, action, isPhoneNotification);
         _notificationBubbles.Add(bubble);
         while (_notificationBubbles.Count > 5)
             RemoveNotification(_notificationBubbles[0].Id);
@@ -974,6 +1003,21 @@ public sealed partial class MainWindow : Window
             timer.Dispose();
         }
         _notificationBubbles.RemoveAll(item => item.Id == id);
+        RenderNotifications();
+    }
+
+    private void ClearWidgetNotificationBubbles()
+    {
+        var ids = _notificationBubbles.Where(item => !item.IsPhoneNotification).Select(item => item.Id).ToArray();
+        foreach (var id in ids)
+        {
+            if (_notificationTimers.Remove(id, out var timer))
+            {
+                timer.Cancel();
+                timer.Dispose();
+            }
+        }
+        _notificationBubbles.RemoveAll(item => !item.IsPhoneNotification);
         RenderNotifications();
     }
 
@@ -1064,7 +1108,13 @@ public sealed partial class MainWindow : Window
             ? $"{tool} не найден в PATH"
             : message;
 
-    private sealed record NotificationBubble(Guid Id, string Message, Action? Action);
+    private static string NotificationHistoryMessage(string message)
+    {
+        var actionStart = message.IndexOf(" · нажмите", StringComparison.Ordinal);
+        return actionStart >= 0 ? message[..actionStart] : message;
+    }
+
+    private sealed record NotificationBubble(Guid Id, string Message, Action? Action, bool IsPhoneNotification);
 
     private sealed record AdbDeviceChoice(string Serial, string Name, string Manufacturer,
         string AndroidVersion, int? BatteryPercent, bool Wireless, string AdbState, bool ScreenOn, bool Locked)

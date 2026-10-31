@@ -14,6 +14,7 @@ internal sealed class DesktopRuntime : IAsyncDisposable
     public DesktopRuntime()
     {
         Settings = new DesktopSettingsStore();
+        Notifications = new DesktopNotificationStore();
         Adb = new PortableAdbService();
         Companion = new DesktopCompanionInstaller(Adb);
         Photos = new DesktopPhotoMonitor(Adb);
@@ -29,6 +30,7 @@ internal sealed class DesktopRuntime : IAsyncDisposable
     }
 
     public DesktopSettingsStore Settings { get; }
+    public DesktopNotificationStore Notifications { get; }
     public PortableAdbService Adb { get; }
     public DesktopCompanionInstaller Companion { get; }
     public DesktopPhotoMonitor Photos { get; }

@@ -1,0 +1,60 @@
+<Window x:Class="AndroidWidget.Desktop.NotificationHistoryWindow"
+        xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="События виджета" Icon="/Assets/AppIcon.png"
+        Width="420" Height="460" MinWidth="360" MinHeight="300"
+        WindowStartupLocation="CenterOwner" Background="{DynamicResource WindowSurface}">
+  <Window.Styles>
+    <Style Selector="Button.action">
+      <Setter Property="Height" Value="38" />
+      <Setter Property="Padding" Value="14,0" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Background" Value="{DynamicResource Accent}" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Border.notificationCard">
+      <Setter Property="Padding" Value="14" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="Background" Value="{DynamicResource Surface}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Border}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+  </Window.Styles>
+  <Grid Margin="20" RowDefinitions="Auto,*,Auto">
+    <Grid ColumnDefinitions="*,Auto">
+      <StackPanel>
+        <TextBlock Text="События виджета" FontSize="23" FontWeight="SemiBold"
+                   Foreground="{DynamicResource Primary}" />
+        <TextBlock x:Name="SubtitleText" Margin="0,5,0,0" FontSize="11"
+                   Foreground="{DynamicResource Secondary}" />
+      </StackPanel>
+      <Button x:Name="ClearButton" Grid.Column="1" Classes="action" Content="Очистить" IsVisible="False"
+              VerticalAlignment="Center" Click="ClearButton_Click" />
+    </Grid>
+    <ScrollViewer Grid.Row="1" Margin="0,18,0,0" VerticalScrollBarVisibility="Auto">
+      <Grid>
+        <ItemsControl x:Name="HistoryItems">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Border Classes="notificationCard" Margin="0,0,0,8">
+                <Grid RowDefinitions="Auto,Auto">
+                  <TextBlock Text="{Binding PostedAtText}" FontSize="11"
+                             Foreground="{DynamicResource Secondary}" />
+                  <TextBlock Grid.Row="1" Text="{Binding Message}" Margin="0,8,0,0"
+                             FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"
+                             Foreground="{DynamicResource Primary}" />
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <Border x:Name="EmptyState" Classes="notificationCard" MinHeight="130" IsVisible="False">
+          <TextBlock Text="Пока пусто" HorizontalAlignment="Center" VerticalAlignment="Center"
+                     FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource Primary}" />
+        </Border>
+      </Grid>
+    </ScrollViewer>
+    <TextBlock x:Name="StatusText" Grid.Row="2" Margin="0,12,0,0" FontSize="10.5" IsVisible="False"
+               Foreground="{DynamicResource Secondary}" />
+  </Grid>
+</Window>
