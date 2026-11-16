@@ -13,11 +13,47 @@
       <Setter Property="Foreground" Value="White" />
     </Style>
     <Style Selector="Border.notificationCard">
-      <Setter Property="Padding" Value="14" />
       <Setter Property="CornerRadius" Value="12" />
       <Setter Property="Background" Value="{DynamicResource Surface}" />
       <Setter Property="BorderBrush" Value="{DynamicResource Border}" />
       <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Button.rowSurface">
+      <Setter Property="Padding" Value="14" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Foreground" Value="{DynamicResource Primary}" />
+    </Style>
+    <Style Selector="Button.rowSurface:pointerover">
+      <Setter Property="Background" Value="{DynamicResource MutedSurface}" />
+    </Style>
+    <Style Selector="Button.notificationDelete">
+      <Setter Property="Width" Value="32" />
+      <Setter Property="Height" Value="32" />
+      <Setter Property="Padding" Value="8" />
+      <Setter Property="Margin" Value="0,8,8,0" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Foreground" Value="{DynamicResource Secondary}" />
+      <Setter Property="Opacity" Value="0" />
+      <Setter Property="IsHitTestVisible" Value="False" />
+    </Style>
+    <Style Selector="Button.notificationDelete:pointerover">
+      <Setter Property="Background" Value="{DynamicResource MutedSurface}" />
+      <Setter Property="Foreground" Value="{DynamicResource Error}" />
+    </Style>
+    <Style Selector="Grid.notificationRow:pointerover Button.notificationDelete">
+      <Setter Property="Opacity" Value="1" />
+      <Setter Property="IsHitTestVisible" Value="True" />
+    </Style>
+    <Style Selector="Grid.notificationRow:focus-within Button.notificationDelete">
+      <Setter Property="Opacity" Value="1" />
+      <Setter Property="IsHitTestVisible" Value="True" />
     </Style>
   </Window.Styles>
   <Grid Margin="20" RowDefinitions="Auto,*,Auto">
@@ -37,18 +73,33 @@
           <ItemsControl.ItemTemplate>
             <DataTemplate>
               <Border Classes="notificationCard" Margin="0,0,0,8">
-                <Grid RowDefinitions="Auto,Auto">
-                  <TextBlock Text="{Binding PostedAtText}" FontSize="11"
-                             Foreground="{DynamicResource Secondary}" />
-                  <TextBlock Grid.Row="1" Text="{Binding Message}" Margin="0,8,0,0"
-                             FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"
-                             Foreground="{DynamicResource Primary}" />
+                <Grid Classes="notificationRow">
+                  <Button Classes="rowSurface" Click="NotificationCard_Click"
+                          AutomationProperties.Name="{Binding AutomationName}">
+                    <Grid Margin="0,0,34,0" RowDefinitions="Auto,Auto">
+                      <TextBlock Text="{Binding PostedAtText}" FontSize="11"
+                                 Foreground="{DynamicResource Secondary}" />
+                      <TextBlock Grid.Row="1" Text="{Binding Message}" Margin="0,8,0,0"
+                                 FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"
+                                 Foreground="{DynamicResource Primary}" />
+                    </Grid>
+                  </Button>
+                  <Button Classes="notificationDelete" Click="DeleteNotification_Click"
+                          ToolTip.Tip="Удалить" AutomationProperties.Name="{Binding DeleteAutomationName}">
+                    <Viewbox Width="14" Height="14">
+                      <Canvas Width="14" Height="14">
+                        <Path Data="M 2,2 L 12,12 M 12,2 L 2,12" Stroke="{Binding $parent[Button].Foreground}"
+                              StrokeThickness="1.8" StrokeLineCap="Round" />
+                      </Canvas>
+                    </Viewbox>
+                  </Button>
                 </Grid>
               </Border>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
-        <Border x:Name="EmptyState" Classes="notificationCard" MinHeight="130" IsVisible="False">
+        <Border x:Name="EmptyState" Classes="notificationCard" MinHeight="130" IsVisible="False"
+                Focusable="True" AutomationProperties.Name="Событий больше нет">
           <TextBlock Text="Пока пусто" HorizontalAlignment="Center" VerticalAlignment="Center"
                      FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource Primary}" />
         </Border>

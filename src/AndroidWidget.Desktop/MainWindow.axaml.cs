@@ -2,6 +2,7 @@ using System.Diagnostics;
 using AndroidWidget.CompanionHost;
 using AndroidWidget.Core;
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
@@ -20,6 +21,7 @@ public sealed partial class MainWindow : Window
     private const double PhoneWindowWidth = 258;
     private const double PhoneWindowHeight = 392;
     private const double DrawerWidth = 326;
+    private const double DrawerPopupVerticalMargin = 8;
     private const double NotificationWidth = 352;
     private const int MiniDragThreshold = 4;
     private readonly DesktopRuntime _runtime;
@@ -64,10 +66,15 @@ public sealed partial class MainWindow : Window
         NotificationPopup.PlacementTarget = PhoneShell;
         PhoneShell.AddHandler(ContextRequestedEvent, PhoneShell_ContextRequested,
             RoutingStrategies.Bubble, handledEventsToo: true);
+        PositionChanged += (_, _) => UpdateActionDrawerLayoutIfOpen();
+        SizeChanged += (_, _) => UpdateActionDrawerLayoutIfOpen();
+        ScalingChanged += (_, _) => UpdateActionDrawerLayoutIfOpen();
+        Screens.Changed += Screens_Changed;
         ApplySettings();
         _settings.Changed += Settings_Changed;
         ProductVersionText.Text = ProductVersion.ProductLabel;
         _runtime.NotificationReceived += HandleNotification;
+        _runtime.Notifications.Changed += RuntimeNotifications_Changed;
         _runtime.Transfers.Changed += Transfers_Changed;
         _runtime.PhotoDetected += Runtime_PhotoDetected;
         _adb.RecordingEnded += Adb_RecordingEnded;
@@ -82,9 +89,11 @@ public sealed partial class MainWindow : Window
             _adbOperation?.Cancel();
             _settings.Changed -= Settings_Changed;
             _runtime.NotificationReceived -= HandleNotification;
+            _runtime.Notifications.Changed -= RuntimeNotifications_Changed;
             _runtime.Transfers.Changed -= Transfers_Changed;
             _runtime.PhotoDetected -= Runtime_PhotoDetected;
             _adb.RecordingEnded -= Adb_RecordingEnded;
+            Screens.Changed -= Screens_Changed;
             _notificationHistoryWindow?.Close();
             ActionDrawerPopup.IsOpen = false;
             NotificationPopup.IsOpen = false;
@@ -241,10 +250,7 @@ public sealed partial class MainWindow : Window
 
         if (shouldOpen)
         {
-            _drawerOnLeft = ShouldOpenPopupOnLeft(DrawerWidth);
-            ActionDrawerPopup.Placement = _drawerOnLeft
-                ? PlacementMode.LeftEdgeAlignedTop
-                : PlacementMode.RightEdgeAlignedTop;
+            UpdateActionDrawerLayout();
             _drawerOpen = true;
             ActionDrawerPopup.IsOpen = true;
             RenderNotifications();
@@ -254,6 +260,58 @@ public sealed partial class MainWindow : Window
         _drawerOpen = false;
         ActionDrawerPopup.IsOpen = false;
         RenderNotifications();
+    }
+
+    private bool UpdateActionDrawerHeight()
+    {
+        var targetTop = VisualExtensions.PointToScreen(PhoneShell, new Point(0, 0));
+        var targetBottom = VisualExtensions.PointToScreen(PhoneShell,
+            new Point(0, PhoneShell.Bounds.Height));
+        var targetCenter = VisualExtensions.PointToScreen(PhoneShell,
+            new Point(PhoneShell.Bounds.Width / 2, PhoneShell.Bounds.Height / 2));
+        var screen = Screens.ScreenFromPoint(targetCenter) ??
+                     Screens.ScreenFromPoint(targetBottom) ??
+                     Screens.ScreenFromPoint(targetTop) ??
+                     Screens.ScreenFromWindow(this) ??
+                     Screens.Primary;
+        if (screen is null)
+        {
+            ActionDrawer.MaxHeight = double.PositiveInfinity;
+            return false;
+        }
+
+        var work = screen.WorkingArea;
+        var anchorTop = Math.Clamp(targetTop.Y, work.Y, work.Bottom);
+        var anchorBottom = Math.Clamp(targetBottom.Y, work.Y, work.Bottom);
+        var availableDownPixels = Math.Max(0, work.Bottom - anchorTop);
+        var availableUpPixels = Math.Max(0, anchorBottom - work.Y);
+        var scale = Math.Max(0.1, screen.Scaling);
+        var opensUp = availableUpPixels > availableDownPixels;
+        var availablePixels = opensUp ? availableUpPixels : availableDownPixels;
+        ActionDrawer.MaxHeight = Math.Max(1,
+            Math.Floor(availablePixels / scale) - DrawerPopupVerticalMargin);
+        return opensUp;
+    }
+
+    private void Screens_Changed(object? sender, EventArgs e) => UpdateActionDrawerLayoutIfOpen();
+
+    private void UpdateActionDrawerLayoutIfOpen()
+    {
+        if (_drawerOpen)
+            UpdateActionDrawerLayout();
+    }
+
+    private void UpdateActionDrawerLayout()
+    {
+        _drawerOnLeft = ShouldOpenPopupOnLeft(DrawerWidth);
+        var opensUp = UpdateActionDrawerHeight();
+        ActionDrawerPopup.Placement = (_drawerOnLeft, opensUp) switch
+        {
+            (true, true) => PlacementMode.LeftEdgeAlignedBottom,
+            (true, false) => PlacementMode.LeftEdgeAlignedTop,
+            (false, true) => PlacementMode.RightEdgeAlignedBottom,
+            _ => PlacementMode.RightEdgeAlignedTop
+        };
     }
 
     private void DragHandle_PointerPressed(object? sender, PointerPressedEventArgs e)
@@ -531,7 +589,12 @@ public sealed partial class MainWindow : Window
     {
         var topLeft = VisualExtensions.PointToScreen(PhoneShell, new Point(0, 0));
         var topRight = VisualExtensions.PointToScreen(PhoneShell, new Point(PhoneShell.Bounds.Width, 0));
-        var screen = Screens.ScreenFromPoint(topLeft) ?? Screens.ScreenFromWindow(this) ?? Screens.Primary;
+        var center = VisualExtensions.PointToScreen(PhoneShell,
+            new Point(PhoneShell.Bounds.Width / 2, PhoneShell.Bounds.Height / 2));
+        var screen = Screens.ScreenFromPoint(center) ??
+                     Screens.ScreenFromPoint(topLeft) ??
+                     Screens.ScreenFromWindow(this) ??
+                     Screens.Primary;
         if (screen is null)
             return false;
 
@@ -780,8 +843,10 @@ public sealed partial class MainWindow : Window
             existing.Activate();
             return;
         }
-        var window = new NotificationHistoryWindow(_runtime.Notifications, ClearWidgetNotificationBubbles)
-            { Topmost = Topmost };
+        var window = new NotificationHistoryWindow(_runtime.Notifications)
+        {
+            Topmost = Topmost
+        };
         _notificationHistoryWindow = window;
         window.Closed += (_, _) =>
         {
@@ -971,11 +1036,12 @@ public sealed partial class MainWindow : Window
     {
         if (string.IsNullOrWhiteSpace(message))
             return;
-        if (!isPhoneNotification)
-            _runtime.Notifications.Add(NotificationHistoryMessage(message));
+        var historyItemId = isPhoneNotification
+            ? null
+            : _runtime.Notifications.Add(NotificationHistoryMessage(message));
         if (!_settings.Current.ShowNotifications)
             return;
-        var bubble = new NotificationBubble(Guid.NewGuid(), message, action, isPhoneNotification);
+        var bubble = new NotificationBubble(Guid.NewGuid(), message, action, historyItemId);
         _notificationBubbles.Add(bubble);
         while (_notificationBubbles.Count > 5)
             RemoveNotification(_notificationBubbles[0].Id);
@@ -1008,7 +1074,7 @@ public sealed partial class MainWindow : Window
 
     private void ClearWidgetNotificationBubbles()
     {
-        var ids = _notificationBubbles.Where(item => !item.IsPhoneNotification).Select(item => item.Id).ToArray();
+        var ids = _notificationBubbles.Where(item => item.HistoryItemId is not null).Select(item => item.Id).ToArray();
         foreach (var id in ids)
         {
             if (_notificationTimers.Remove(id, out var timer))
@@ -1017,8 +1083,36 @@ public sealed partial class MainWindow : Window
                 timer.Dispose();
             }
         }
-        _notificationBubbles.RemoveAll(item => !item.IsPhoneNotification);
+        _notificationBubbles.RemoveAll(item => item.HistoryItemId is not null);
         RenderNotifications();
+    }
+
+    private void RuntimeNotifications_Changed(object? sender, DesktopNotificationChange change)
+    {
+        void ApplyChange()
+        {
+            if (change.Kind == DesktopNotificationChangeKind.Cleared)
+            {
+                ClearWidgetNotificationBubbles();
+                return;
+            }
+            if (change.ItemId is { } id &&
+                change.Kind is DesktopNotificationChangeKind.Read or DesktopNotificationChangeKind.Removed)
+                DismissWidgetNotification(id);
+        }
+
+        if (Dispatcher.UIThread.CheckAccess())
+            ApplyChange();
+        else
+            Dispatcher.UIThread.Post(ApplyChange);
+    }
+
+    private void DismissWidgetNotification(Guid historyItemId)
+    {
+        var ids = _notificationBubbles.Where(item => item.HistoryItemId == historyItemId)
+            .Select(item => item.Id).ToArray();
+        foreach (var id in ids)
+            RemoveNotification(id);
     }
 
     private void RenderNotifications()
@@ -1038,15 +1132,17 @@ public sealed partial class MainWindow : Window
         NotificationPopup.IsOpen = true;
     }
 
-    private static Border CreateBubble(NotificationBubble bubble)
+    private Border CreateBubble(NotificationBubble bubble)
     {
-        var view = new Border
+        var messageButton = new Button
         {
-            MinHeight = 46,
-            Padding = new Thickness(12, 9),
-            CornerRadius = new CornerRadius(12, 12, 12, 4),
-            Background = new SolidColorBrush(Color.FromRgb(51, 45, 86)),
-            Child = new TextBlock
+            Padding = new Thickness(12, 9, 42, 9),
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,
+            Background = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            Cursor = new Cursor(StandardCursorType.Hand),
+            Content = new TextBlock
             {
                 Text = bubble.Message,
                 FontSize = 12.5,
@@ -1054,13 +1150,81 @@ public sealed partial class MainWindow : Window
                 LineHeight = 17,
                 TextWrapping = TextWrapping.Wrap,
                 Foreground = new SolidColorBrush(Color.FromRgb(232, 228, 255))
+            },
+            [AutomationProperties.NameProperty] = $"Прочитать уведомление: {bubble.Message}"
+        };
+        var closeButton = new Button
+        {
+            Width = 32,
+            Height = 32,
+            Padding = new Thickness(8),
+            Margin = new Thickness(0, 7, 7, 0),
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
+            Background = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            IsVisible = false,
+            Content = new Viewbox
+            {
+                Width = 14,
+                Height = 14,
+                Child = new Avalonia.Controls.Shapes.Path
+                {
+                    Data = StreamGeometry.Parse("M 2,2 L 12,12 M 12,2 L 2,12"),
+                    Stroke = new SolidColorBrush(Color.FromRgb(232, 228, 255)),
+                    StrokeThickness = 1.8,
+                    StrokeLineCap = PenLineCap.Round
+                }
+            },
+            [AutomationProperties.NameProperty] = $"Удалить уведомление: {bubble.Message}"
+        };
+        ToolTip.SetTip(closeButton, "Удалить");
+        var content = new Grid();
+        content.Children.Add(messageButton);
+        content.Children.Add(closeButton);
+        var view = new Border
+        {
+            MinHeight = 46,
+            CornerRadius = new CornerRadius(12, 12, 12, 4),
+            Background = new SolidColorBrush(Color.FromRgb(51, 45, 86)),
+            Child = content
+        };
+
+        void UpdateCloseVisibility() => closeButton.IsVisible =
+            view.IsPointerOver || messageButton.IsFocused || closeButton.IsFocused;
+
+        view.PointerEntered += (_, _) => UpdateCloseVisibility();
+        view.PointerExited += (_, _) => UpdateCloseVisibility();
+        messageButton.GotFocus += (_, _) => UpdateCloseVisibility();
+        messageButton.LostFocus += (_, _) => Dispatcher.UIThread.Post(UpdateCloseVisibility);
+        closeButton.GotFocus += (_, _) => UpdateCloseVisibility();
+        closeButton.LostFocus += (_, _) => Dispatcher.UIThread.Post(UpdateCloseVisibility);
+        messageButton.Click += (_, _) =>
+        {
+            if (bubble.HistoryItemId is { } historyItemId)
+            {
+                if (!_runtime.Notifications.MarkRead(historyItemId))
+                    SetStatus("Не удалось сохранить прочтение", true);
+            }
+            else
+            {
+                RemoveNotification(bubble.Id);
+            }
+            bubble.Action?.Invoke();
+        };
+        closeButton.Click += (_, e) =>
+        {
+            e.Handled = true;
+            if (bubble.HistoryItemId is { } historyItemId)
+            {
+                if (!_runtime.Notifications.Remove(historyItemId))
+                    SetStatus("Не удалось удалить событие", true);
+            }
+            else
+            {
+                RemoveNotification(bubble.Id);
             }
         };
-        if (bubble.Action is not null)
-        {
-            view.Cursor = new Cursor(StandardCursorType.Hand);
-            view.PointerReleased += (_, _) => bubble.Action();
-        }
         return view;
     }
 
@@ -1114,7 +1278,11 @@ public sealed partial class MainWindow : Window
         return actionStart >= 0 ? message[..actionStart] : message;
     }
 
-    private sealed record NotificationBubble(Guid Id, string Message, Action? Action, bool IsPhoneNotification);
+    private sealed record NotificationBubble(
+        Guid Id,
+        string Message,
+        Action? Action,
+        Guid? HistoryItemId);
 
     private sealed record AdbDeviceChoice(string Serial, string Name, string Manufacturer,
         string AndroidVersion, int? BatteryPercent, bool Wireless, string AdbState, bool ScreenOn, bool Locked)

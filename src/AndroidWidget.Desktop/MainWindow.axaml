@@ -242,7 +242,7 @@
   </Viewbox>
 
   <Popup x:Name="ActionDrawerPopup" IsLightDismissEnabled="False" WindowManagerAddShadowHint="False">
-    <Border x:Name="ActionDrawer" Width="318" Height="500"
+    <Border x:Name="ActionDrawer" Width="318"
             VerticalAlignment="Top" Margin="4"
             Padding="14" CornerRadius="24" Background="{DynamicResource Surface}"
             BorderBrush="{DynamicResource Border}" BorderThickness="1">
@@ -258,9 +258,9 @@
                   Click="CollapsePanel_Click" ToolTip.Tip="Скрыть действия" />
         </Grid>
 
-        <ScrollViewer Grid.Row="1" Margin="0,10,0,0" VerticalScrollBarVisibility="Hidden">
+        <ScrollViewer Grid.Row="1" Margin="0,10,0,0" VerticalScrollBarVisibility="Auto">
           <StackPanel>
-            <UniformGrid Columns="3" Width="282" HorizontalAlignment="Center">
+            <UniformGrid Columns="3" HorizontalAlignment="Stretch">
               <Button Classes="tile" Click="ScreenButton_Click" ToolTip.Tip="Трансляция через scrcpy">
                 <StackPanel><Border Width="48" Height="48" CornerRadius="14" Background="#7559E8"><Viewbox Width="24" Height="24"><Canvas Width="24" Height="24"><Path Classes="actionGlyph" Data="M 4,4 H 20 A 1,1 0 0 1 21,5 V 16 A 1,1 0 0 1 20,17 H 4 A 1,1 0 0 1 3,16 V 5 A 1,1 0 0 1 4,4 M 8,21 H 16 M 12,17 V 21" /></Canvas></Viewbox></Border><TextBlock Text="Экран" Margin="0,5,0,0" FontSize="10.5" HorizontalAlignment="Center"/></StackPanel>
               </Button>
